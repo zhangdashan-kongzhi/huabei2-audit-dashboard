@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>华北二大区 · 食安巡检看板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; }
+  .header { background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%); color: #fff; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  .header .subtitle { font-size: 13px; opacity: .8; margin-top: 4px; }
+  .header .update-time { font-size: 12px; opacity: .7; }
+  .tab-bar { background: #fff; border-bottom: 2px solid #e8eaed; padding: 0 32px; display: flex; gap: 0; }
+  .tab-btn { padding: 14px 28px; font-size: 15px; cursor: pointer; border: none; background: none; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s; font-weight: 500; }
+  .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+  .tab-btn:hover { color: #1a73e8; background: #f8f9ff; }
+  .container { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .kpi-card .label { font-size: 13px; color: #888; margin-bottom: 8px; }
+  .kpi-card .value { font-size: 32px; font-weight: 700; color: #1a73e8; }
+  .kpi-card .value.green { color: #34a853; }
+  .kpi-card .value.orange { color: #fa7b17; }
+  .kpi-card .value.red { color: #ea4335; }
+  .kpi-card .sub { font-size: 12px; color: #aaa; margin-top: 4px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .charts-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .chart-card h3 { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+  .chart-box { width: 100%; height: 280px; }
+  .chart-box-tall { width: 100%; height: 340px; }
+  .table-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; }
+  .table-card h3 { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+  .filter-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-row label { font-size: 13px; color: #666; }
+  .filter-row select { padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; color: #333; background: #fff; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e8eaed; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:hover td { background: #f8f9ff; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #e6f4ea; color: #34a853; }
+  .badge-blue { background: #e8f0fe; color: #1a73e8; }
+  .badge-orange { background: #fce8e6; color: #ea4335; }
+  .badge-gray { background: #f1f3f4; color: #888; }
+  .score-bar { display: flex; align-items: center; gap: 8px; }
+  .score-bar .bar { height: 6px; border-radius: 3px; background: #e8eaed; flex: 1; overflow: hidden; }
+  .score-bar .fill { height: 100%; border-radius: 3px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .section-title { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 16px; padding-left: 10px; border-left: 4px solid #1a73e8; }
+  .issue-tag { display: inline-block; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; border-radius: 4px; padding: 2px 6px; font-size: 11px; margin: 2px; }
+  .pagination { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: #666; }
+  .page-btn { padding: 4px 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: #fff; }
+  .page-btn:hover, .page-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+  .city-rank { display: flex; flex-direction: column; gap: 10px; }
+  .city-rank-item { display: flex; align-items: center; gap: 10px; }
+  .city-rank-item .city-name { width: 60px; font-size: 13px; color: #555; text-align: right; }
+  .city-rank-item .rank-bar { flex: 1; height: 20px; background: #e8eaed; border-radius: 4px; overflow: hidden; }
+  .city-rank-item .rank-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1a73e8, #4fc3f7); display: flex; align-items: center; padding-left: 8px; color: #fff; font-size: 11px; font-weight: 600; }
+  .city-rank-item .rank-val { width: 40px; font-size: 13px; font-weight: 700; color: #1a73e8; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🐘 华北二大区 · 食安巡检数据看板</h1>
+    <div class="subtitle">数据来源：线上店食安巡检系统 | 考核大区：华北二大区 | 周期：M8（7月测试数据已排除）</div>
+  </div>
+  <div class="update-time">数据更新：2026-08-18</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('day')">📅 日视图</button>
+  <button class="tab-btn" onclick="switchTab('week')">📆 周视图</button>
+  <button class="tab-btn" onclick="switchTab('month')">🗓️ 月视图</button>
+  <button class="tab-btn" onclick="switchTab('detail')">📋 明细列表</button>
+  <button class="tab-btn" onclick="switchTab('analysis')">📊 分析报告</button>
+</div>
+
+<!-- ===== 日视图 ===== -->
+<div id="tab-day" class="tab-content active">
+<div class="container">
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="label">巡检总场次</div><div class="value">24</div><div class="sub">华北二大区全量</div></div>
+    <div class="kpi-card"><div class="label">平均综合得分</div><div class="value green">85.7</div><div class="sub">满分100分</div></div>
+    <div class="kpi-card"><div class="label">已完成</div><div class="value green">24</div><div class="sub">完成率 100.0%</div></div>
+    <div class="kpi-card"><div class="label">待确认</div><div class="value orange">0</div><div class="sub">pending_confirm</div></div>
+    <div class="kpi-card"><div class="label">平均不合格项</div><div class="value red">4.5</div><div class="sub">项/场次</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📊 各城市巡检场次 & 平均得分</h3>
+      <div id="chart-city-score" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🔴 TOP不合格项分布（频次）</h3>
+      <div id="chart-issue-top" class="chart-box"></div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📈 得分分布区间</h3>
+      <div id="chart-score-dist" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🏪 各城市平均不合格项数</h3>
+      <div id="chart-city-issue" class="chart-box"></div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <h3>🏙️ 城市汇总</h3>
+    <table>
+      <thead><tr><th>城市</th><th>巡检场次</th><th>平均得分</th><th>最高分</th><th>最低分</th><th>平均不合格项</th><th>已闭环率</th></tr></thead>
+      <tbody id="city-summary-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ===== 周视图 ===== -->
+<div id="tab-week" class="tab-content">
+<div class="container">
+  <div class="section-title">按周统计（8月数据）</div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="label">W32（8/3-8/9）</div><div class="value">18</div><div class="sub">场次</div></div>
+    <div class="kpi-card"><div class="label">W32 平均得分</div><div class="value green">86.6</div><div class="sub"></div></div>
+    <div class="kpi-card"><div class="label">W33（8/10-8/16）</div><div class="value">6</div><div class="sub">场次</div></div>
+    <div class="kpi-card"><div class="label">W33 平均得分</div><div class="value orange">82.8</div><div class="sub"></div></div>
+    <div class="kpi-card"><div class="label">周环比变化</div><div class="value red">▼3.8</div><div class="sub">得分下降</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📈 周趋势：平均得分</h3>
+      <div id="chart-week-score" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>📊 周趋势：巡检场次 & 不合格项</h3>
+      <div id="chart-week-count" class="chart-box"></div>
+    </div>
+  </div>
+
+  <div class="charts-row-3">
+    <div class="chart-card">
+      <h3>🏙️ 青岛周趋势</h3>
+      <div id="chart-week-qd" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🏙️ 济南周趋势</h3>
+      <div id="chart-week-jn" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🏙️ 太原周趋势</h3>
+      <div id="chart-week-ty" class="chart-box"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ===== 月视图 ===== -->
+<div id="tab-month" class="tab-content">
+<div class="container">
+  <div class="section-title">月度汇总（M8 周期）</div>
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="label">8月巡检场次</div><div class="value">24</div><div class="sub">8/3-8/14</div></div>
+    <div class="kpi-card"><div class="label">8月平均得分</div><div class="value green">85.7</div><div class="sub">满分100分</div></div>
+    <div class="kpi-card"><div class="label">最高分站点</div><div class="value green">95</div><div class="sub">济南·南辛庄站</div></div>
+    <div class="kpi-card"><div class="label">最低分站点</div><div class="value red">74</div><div class="sub">青岛·高密站</div></div>
+    <div class="kpi-card"><div class="label">整改闭环率</div><div class="value green">95.8%</div><div class="sub">23/24已闭环</div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>📊 月度城市得分对比</h3>
+      <div id="chart-month-city" class="chart-box"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🔴 月度高频不合格项 TOP10</h3>
+      <div id="chart-month-issue" class="chart-box-tall"></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:24px">
+    <h3>📅 每日巡检得分趋势（全周期）</h3>
+    <div id="chart-daily-trend" style="width:100%;height:300px;"></div>
+  </div>
+
+  <div class="table-card">
+    <h3>🏙️ 月度城市明细</h3>
+    <table>
+      <thead><tr><th>城市</th><th>8月场次</th><th>8月均分</th><th>最高分</th><th>最低分</th><th>平均不合格项</th><th>累计不合格项</th></tr></thead>
+      <tbody id="month-city-tbody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ===== 分析报告 ===== -->
+<div id="tab-analysis" class="tab-content">
+<div class="container">
+
+  <!-- 总体概况 -->
+  <div class="section-title">一、总体概况</div>
+  <div class="kpi-row" style="margin-bottom:24px">
+    <div class="kpi-card"><div class="label">巡检总场次</div><div class="value">24</div><div class="sub">覆盖约20个站点</div></div>
+    <div class="kpi-card"><div class="label">平均综合得分</div><div class="value green">85.7</div><div class="sub">满分100分</div></div>
+    <div class="kpi-card"><div class="label">最高分站点</div><div class="value green">95</div><div class="sub">济南·南辛庄站</div></div>
+    <div class="kpi-card"><div class="label">最低分站点</div><div class="value red">74</div><div class="sub">青岛·高密站</div></div>
+    <div class="kpi-card"><div class="label">整改闭环率</div><div class="value green">95.8%</div><div class="sub">1站点未闭环</div></div>
+  </div>
+
+  <!-- 城市维度 + 月度趋势 -->
+  <div class="charts-row" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>🏙️ 城市维度汇总</h3>
+      <table style="font-size:13px;width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f8f9fa">
+          <th style="padding:8px 10px;text-align:left;border-bottom:2px solid #e8eaed">城市</th>
+          <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8eaed">场次</th>
+          <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8eaed">均分</th>
+          <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8eaed">最高/最低</th>
+          <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8eaed">均不合格项</th>
+          <th style="padding:8px 10px;text-align:center;border-bottom:2px solid #e8eaed">闭环率</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 10px">🔴 青岛</td><td style="text-align:center;padding:8px 10px">11</td><td style="text-align:center;padding:8px 10px;color:#ea4335;font-weight:700">83.3</td><td style="text-align:center;padding:8px 10px">92 / 74</td><td style="text-align:center;padding:8px 10px;color:#ea4335;font-weight:700">5.5</td><td style="text-align:center;padding:8px 10px">91%</td></tr>
+          <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 10px">🟢 济南</td><td style="text-align:center;padding:8px 10px">8</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">87.9</td><td style="text-align:center;padding:8px 10px">95 / 82</td><td style="text-align:center;padding:8px 10px">3.4</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">100%</td></tr>
+          <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 10px">🟢 太原</td><td style="text-align:center;padding:8px 10px">2</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">88.5</td><td style="text-align:center;padding:8px 10px">90 / 87</td><td style="text-align:center;padding:8px 10px">3.0</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">100%</td></tr>
+          <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 10px">🟢 石家庄</td><td style="text-align:center;padding:8px 10px">1</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">93.0</td><td style="text-align:center;padding:8px 10px">93 / 93</td><td style="text-align:center;padding:8px 10px">2.0</td><td style="text-align:center;padding:8px 10px;color:#34a853;font-weight:700">100%</td></tr>
+          <tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 10px">🟡 济宁</td><td style="text-align:center;padding:8px 10px">1</td><td style="text-align:center;padding:8px 10px;color:#1a73e8;font-weight:700">82.0</td><td style="text-align:center;padding:8px 10px">82 / 82</td><td style="text-align:center;padding:8px 10px;color:#ea4335">7.0</td><td style="text-align:center;padding:8px 10px">100%</td></tr>
+          <tr><td style="padding:8px 10px">🟡 泰安</td><td style="text-align:center;padding:8px 10px">1</td><td style="text-align:center;padding:8px 10px;color:#1a73e8;font-weight:700">85.0</td><td style="text-align:center;padding:8px 10px">85 / 85</td><td style="text-align:center;padding:8px 10px">5.0</td><td style="text-align:center;padding:8px 10px">100%</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;padding:10px 12px;background:#fff8e1;border-radius:8px;font-size:13px;color:#e65100">
+        📌 城市排名：<strong>石家庄 &gt; 太原 &gt; 济南 &gt; 泰安 &gt; 济宁 &gt; 青岛</strong>，青岛得分最低、不合格项最多，是重点关注城市。
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>📈 周趋势对比（8月）</h3>
+      <div id="chart-analysis-month" style="width:100%;height:200px"></div>
+      <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+        <div style="background:#f8f9fa;border-radius:8px;padding:12px">
+          <div style="font-size:12px;color:#888">W32均分</div>
+          <div style="font-size:24px;font-weight:700;color:#34a853">86.6</div>
+          <div style="font-size:11px;color:#aaa">18场（8/3-8/9）</div>
+        </div>
+        <div style="background:#f8f9fa;border-radius:8px;padding:12px">
+          <div style="font-size:12px;color:#888">W33均分</div>
+          <div style="font-size:24px;font-weight:700;color:#fa7b17">82.8</div>
+          <div style="font-size:11px;color:#aaa">6场（8/10-8/16）</div>
+        </div>
+        <div style="background:#fce8e6;border-radius:8px;padding:12px">
+          <div style="font-size:12px;color:#888">周环比变化</div>
+          <div style="font-size:24px;font-weight:700;color:#ea4335">▼3.8</div>
+          <div style="font-size:11px;color:#ea4335">不合格项+1.6</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 站点成绩排名 -->
+  <div class="section-title">二、站点成绩排名</div>
+  <div class="charts-row" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>🏆 优秀站点（≥90分）</h3>
+      <div id="chart-top-stores" style="width:100%;height:300px"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🔴 待改进站点（＜80分）及整改未闭环</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0">
+        <div style="background:#fce8e6;border-radius:10px;padding:14px 16px;border-left:4px solid #ea4335">
+          <div style="font-weight:700;color:#c62828;font-size:14px">⚠️ 高密站-QD0009（青岛）</div>
+          <div style="margin-top:6px;display:flex;gap:16px;font-size:13px">
+            <span>得分：<strong style="color:#ea4335">74分</strong></span>
+            <span>不合格项：<strong style="color:#ea4335">8项</strong></span>
+            <span class="badge badge-green">已闭环</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#666">含健康证上岗问题，存在合规风险</div>
+        </div>
+        <div style="background:#fce8e6;border-radius:10px;padding:14px 16px;border-left:4px solid #ea4335">
+          <div style="font-weight:700;color:#c62828;font-size:14px">⚠️ 尚德站-QD0012（青岛）</div>
+          <div style="margin-top:6px;display:flex;gap:16px;font-size:13px">
+            <span>得分：<strong style="color:#ea4335">75分</strong></span>
+            <span>不合格项：<strong style="color:#ea4335">9项（全场最多）</strong></span>
+            <span class="badge badge-green">已闭环</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#666">问题涵盖全类别，属系统性管理薄弱站点</div>
+        </div>
+        <div style="background:#fce8e6;border-radius:10px;padding:14px 16px;border-left:4px solid #ea4335">
+          <div style="font-weight:700;color:#c62828;font-size:14px">⚠️ 嘉定站-QD0004（青岛）</div>
+          <div style="margin-top:6px;display:flex;gap:16px;font-size:13px">
+            <span>得分：<strong style="color:#ea4335">79分</strong></span>
+            <span>不合格项：<strong style="color:#ea4335">7项</strong></span>
+            <span class="badge badge-green">已闭环</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#666">青岛第三个低分站点，需持续跟进</div>
+        </div>
+        <div style="background:#fff3e0;border-radius:10px;padding:14px 16px;border-left:4px solid #fa7b17">
+          <div style="font-weight:700;color:#e65100;font-size:14px">⏳ 国顺站-QD0003（青岛）</div>
+          <div style="margin-top:6px;display:flex;gap:16px;font-size:13px">
+            <span>得分：<strong>82分</strong></span>
+            <span>不合格项：5项</span>
+            <span class="badge badge-blue">已推送未闭环</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#666">整改超期未回传，需催促站点</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 问题点分析 -->
+  <div class="section-title">三、问题点频次汇总分析</div>
+  <div class="charts-row" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>📊 TOP15 不合格项频次排名</h3>
+      <div id="chart-analysis-issues" style="width:100%;height:380px"></div>
+    </div>
+    <div class="chart-card">
+      <h3>🗂️ 问题分类归因（5大类）</h3>
+      <div id="chart-analysis-category" style="width:100%;height:240px"></div>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;font-size:13px">
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fce8e6;border-radius:6px">
+          <span style="font-size:16px">🔴</span>
+          <div><strong>A类·环境卫生</strong>（51次）：专区清洁32+灭蝇灯10+虫害9，几乎每场必现</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fff3e0;border-radius:6px">
+          <span style="font-size:16px">🟠</span>
+          <div><strong>B类·商品贮存</strong>（83次）：离地22+不合格品标识21+食非分区18+错温14+特殊食品8</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fff8e1;border-radius:6px">
+          <span style="font-size:16px">🟡</span>
+          <div><strong>C类·标签合规</strong>（22次）：标签标识20+生产日期2</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fce8e6;border-radius:6px">
+          <span style="font-size:16px">🚨</span>
+          <div><strong>D类·人员证件</strong>（10次）：健康证上岗8+健康证真实性2，<strong>风险最高，涉合规红线</strong></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#e8f0fe;border-radius:6px">
+          <span style="font-size:16px">🔵</span>
+          <div><strong>E类·化学品管理</strong>（10次）：化学品专区隔离标识</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 改进建议 -->
+  <div class="section-title">四、改进建议 & 优秀站点表彰</div>
+  <div class="charts-row" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>📋 改进建议</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:#fce8e6;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;color:#c62828;margin-bottom:8px;font-size:14px">🔴 立即行动（本周内）</div>
+          <div style="font-size:13px;line-height:1.8;color:#444">
+            1. <strong>国顺站（QD0003）</strong> — 整改已推送未闭环，催促回传整改照片，尽快闭环<br>
+            2. <strong>尚德站（QD0012）、高密站（QD0009）、嘉定站（QD0004）</strong> — 安排复查巡检，确认整改落实
+          </div>
+        </div>
+        <div style="background:#fff3e0;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;color:#e65100;margin-bottom:8px;font-size:14px">🟠 重点整改（本月内）</div>
+          <div style="font-size:13px;line-height:1.8;color:#444">
+            3. <strong>11.2 专区清洁（高频）</strong> — 纳入每日交接班检查，设清洁打卡机制<br>
+            4. <strong>13.3 商品离地（高频）</strong> — 配置货架/托盘，强化操作规范培训<br>
+            5. <strong>13.5 不合格品标识（高频）</strong> — 建立不合格品快速隔离标识流程<br>
+            6. <strong>9.1 标签合规（高频）</strong> — 加强收货环节核查，建立快速下架流程
+          </div>
+        </div>
+        <div style="background:#e6f4ea;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;color:#1e7e34;margin-bottom:8px;font-size:14px">🟡 持续优化</div>
+          <div style="font-size:13px;line-height:1.8;color:#444">
+            7. <strong>青岛专项复盘</strong> — 均分83.3，低于大区均值2.4分，3个低分站点集中在青岛，城市负责人专项复盘<br>
+            8. <strong>W33下滑趋势</strong> — W33均分82.8较W32下降3.8分，分析夏季虫害/温控等季节性因素，针对性加强管控
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>🏆 优秀站点表彰建议</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+        <div style="background:linear-gradient(135deg,#fff8e1,#fffde7);border-radius:10px;padding:16px;border:1px solid #ffd54f;display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">🥇</div>
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#333">南辛庄站-JN0010（济南）</div>
+            <div style="font-size:22px;font-weight:700;color:#f9a825;margin:2px 0">95分</div>
+            <div style="font-size:12px;color:#888">全场最高分，仅1项不合格，整改已闭环</div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#f5f5f5,#fafafa);border-radius:10px;padding:16px;border:1px solid #e0e0e0;display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">🥈</div>
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#333">石栾大街站-SJ0012（石家庄）</div>
+            <div style="font-size:22px;font-weight:700;color:#9e9e9e;margin:2px 0">93分</div>
+            <div style="font-size:12px;color:#888">仅2项不合格，整改迅速闭环</div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#fff3e0,#fff8f0);border-radius:10px;padding:16px;border:1px solid #ffcc80;display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">🏅</div>
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#333">济南城市整体</div>
+            <div style="font-size:22px;font-weight:700;color:#fb8c00;margin:2px 0">均分87.9</div>
+            <div style="font-size:12px;color:#888">城市均分最高，8场巡检闭环率100%</div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#e8f0fe;border-radius:8px;padding:12px 14px;font-size:13px;color:#1a73e8">
+        💡 <strong>数据说明：</strong>本报告基于24条巡检记录（8月数据），7月测试数据已排除，数据截至2026-08-14。如需按特定站点或问题点深入分析，可进一步拆解。
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ===== 明细列表 ===== -->
+<div id="tab-detail" class="tab-content">
+<div class="container">
+  <div class="filter-row">
+    <label>城市：</label>
+    <select id="filter-city" onchange="renderTable()">
+      <option value="">全部</option>
+      <option>青岛</option><option>济南</option><option>太原</option>
+      <option>石家庄</option><option>济宁</option><option>泰安</option>
+    </select>
+    <label>巡检状态：</label>
+    <select id="filter-status" onchange="renderTable()">
+      <option value="">全部</option>
+      <option>已完成</option><option>pending_confirm</option>
+    </select>
+    <label>整改状态：</label>
+    <select id="filter-reform" onchange="renderTable()">
+      <option value="">全部</option>
+      <option>已闭环</option><option>已推送</option><option>待复核</option>
+    </select>
+    <label>得分区间：</label>
+    <select id="filter-score" onchange="renderTable()">
+      <option value="">全部</option>
+      <option value="90">≥90分（优秀）</option>
+      <option value="80">80-89分（良好）</option>
+      <option value="0">＜80分（待改进）</option>
+    </select>
+  </div>
+  <div class="table-card">
+    <h3>📋 巡检明细 <span id="table-count" style="font-size:13px;color:#888;font-weight:400;"></span></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>门店名称</th><th>城市</th><th>巡检日期</th>
+          <th>巡检员</th><th>综合得分</th><th>不合格项数</th>
+          <th>巡检状态</th><th>整改状态</th><th>复核状态</th>
+        </tr>
+      </thead>
+      <tbody id="detail-tbody"></tbody>
+    </table>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+</div>
+
+<script>
+// ============ 原始数据 ============
+const RAW = [
+  {id:1,store:"小象超市-长江站-QD0008",city:"青岛",date:"2026-08-14",inspector:"王晓娟",score:80,total:25,pass:19,fail:6,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:2,store:"小象超市-石栾大街站-SJ0012",city:"石家庄",date:"2026-08-14",inspector:"李雨昇",score:93,total:25,pass:23,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:3,store:"小象超市-国顺站-QD0003",city:"青岛",date:"2026-08-13",inspector:"王晓娟",score:82,total:25,pass:20,fail:5,status:"已完成",reform:"已推送",review:""},
+  {id:4,store:"小象超市-云茂站-TA0001",city:"泰安",date:"2026-08-13",inspector:"李颖",score:85,total:25,pass:20,fail:5,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:5,store:"小象超市-尚德站-QD0012",city:"青岛",date:"2026-08-13",inspector:"王晓娟",score:75,total:25,pass:16,fail:9,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:6,store:"小象超市-鲁宝站-JN1001",city:"济宁",date:"2026-08-12",inspector:"王晓娟",score:82,total:25,pass:18,fail:7,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:7,store:"小象超市-南辛庄站-JN0010",city:"济南",date:"2026-08-07",inspector:"李颖",score:95,total:25,pass:24,fail:1,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:8,store:"小象超市-嘉定站-QD0004",city:"青岛",date:"2026-08-07",inspector:"王晓娟",score:79,total:25,pass:18,fail:7,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:9,store:"小象超市-凤凰山站-JN0012",city:"济南",date:"2026-08-06",inspector:"李颖",score:93,total:25,pass:23,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:10,store:"小象超市-乐享站-QD0011",city:"青岛",date:"2026-08-06",inspector:"王晓娟",score:90,total:25,pass:23,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:11,store:"小象超市-鲁华站-JN0009",city:"济南",date:"2026-08-06",inspector:"李颖",score:87,total:25,pass:21,fail:4,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:12,store:"小象超市-中泰站-QD0010",city:"青岛",date:"2026-08-06",inspector:"王晓娟",score:90,total:25,pass:23,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:13,store:"小象超市-西周站-JN0017",city:"济南",date:"2026-08-05",inspector:"李颖",score:85,total:25,pass:22,fail:3,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:14,store:"小象超市-丽达站-QD0002",city:"青岛",date:"2026-08-05",inspector:"王晓娟",score:90,total:25,pass:21,fail:4,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:15,store:"小象超市-历城站-JN0008",city:"济南",date:"2026-08-05",inspector:"李颖",score:82,total:25,pass:20,fail:5,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:16,store:"小象超市-千忆站-QD0001",city:"青岛",date:"2026-08-05",inspector:"王晓娟",score:92,total:25,pass:22,fail:3,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:17,store:"小象超市-高密站-QD0009",city:"青岛",date:"2026-08-04",inspector:"王晓娟",score:74,total:25,pass:13,fail:8,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:18,store:"小象超市-唐郡站-JN0014",city:"济南",date:"2026-08-04",inspector:"李颖",score:93,total:25,pass:19,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:19,store:"小象超市-航苑北街站-TY0008",city:"太原",date:"2026-08-04",inspector:"池晓东",score:87,total:25,pass:17,fail:4,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:20,store:"小象超市-东山站-QD0005",city:"青岛",date:"2026-08-04",inspector:"王晓娟",score:84,total:25,pass:15,fail:6,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:21,store:"小象超市-智汇园站-JN0011",city:"济南",date:"2026-08-04",inspector:"李颖",score:84,total:25,pass:17,fail:4,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:22,store:"小象超市-海尔站-QD0006",city:"青岛",date:"2026-08-03",inspector:"王晓娟",score:80,total:25,pass:13,fail:8,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:23,store:"小象超市-西河站-JN0013",city:"济南",date:"2026-08-03",inspector:"李颖",score:84,total:25,pass:15,fail:6,status:"已完成",reform:"已闭环",review:"已通过"},
+  {id:24,store:"小象超市-长治路站-TY0005",city:"太原",date:"2026-08-03",inspector:"池晓东",score:90,total:25,pass:19,fail:2,status:"已完成",reform:"已闭环",review:"已通过"},
+];
+
+// 不合格项频次统计
+const ISSUES = {
+  "11.2专区清洁/工器具卫生": 32,
+  "13.3商品需离地贮存": 22,
+  "13.5不合格品贮存标识": 21,
+  "9.1标签标识合规": 20,
+  "13.2食品与非食分区": 18,
+  "13.4商品不得错温贮存": 14,
+  "12.2灭蝇灯正常开启": 10,
+  "14.1化学品专区隔离": 10,
+  "12.3无动物活体/痕迹": 9,
+  "7.1健康证上岗": 8,
+  "13.1特殊食品专区陈列": 8,
+  "8.1无过期商品": 3,
+  "4.1不涂改生产日期": 2,
+  "6.1日排查周管控": 1,
+  "2.1/2.2健康证真实有效": 2,
+};
+
+// ============ 工具函数 ============
+function avg(arr) { return arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0; }
+function sum(arr) { return arr.reduce((a,b)=>a+b,0); }
+
+function getWeek(dateStr) {
+  if(dateStr>='2026-08-03'&&dateStr<='2026-08-09') return 'W32(8/3-8/9)';
+  if(dateStr>='2026-08-10'&&dateStr<='2026-08-16') return 'W33(8/10-8/16)';
+  return '其他';
+}
+
+function getMonth(dateStr) { return '8月'; }
+
+// ============ 城市汇总表 ============
+function renderCitySummary() {
+  const cities = [...new Set(RAW.map(r=>r.city))];
+  const tbody = document.getElementById('city-summary-tbody');
+  tbody.innerHTML = cities.map(city => {
+    const rows = RAW.filter(r=>r.city===city);
+    const scores = rows.map(r=>r.score);
+    const closed = rows.filter(r=>r.reform==='已闭环').length;
+    const color = avg(scores)>=90?'green':avg(scores)>=80?'':'red';
+    return `<tr>
+      <td><strong>${city}</strong></td>
+      <td>${rows.length}</td>
+      <td><span style="color:${avg(scores)>=90?'#34a853':avg(scores)>=80?'#1a73e8':'#ea4335'};font-weight:700">${avg(scores)}</span></td>
+      <td>${Math.max(...scores)}</td>
+      <td>${Math.min(...scores)}</td>
+      <td>${(sum(rows.map(r=>r.fail))/rows.length).toFixed(1)}</td>
+      <td>${((closed/rows.length)*100).toFixed(0)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============ 月度城市表 ============
+function renderMonthCity() {
+  const cities = [...new Set(RAW.map(r=>r.city))];
+  const tbody = document.getElementById('month-city-tbody');
+  tbody.innerHTML = cities.map(city => {
+    const rows = RAW.filter(r=>r.city===city);
+    const scores = rows.map(r=>r.score);
+    const avgS = rows.length ? parseFloat(avg(scores)).toFixed(1) : '-';
+    const maxS = rows.length ? Math.max(...scores) : '-';
+    const minS = rows.length ? Math.min(...scores) : '-';
+    const avgF = rows.length ? (sum(rows.map(r=>r.fail))/rows.length).toFixed(1) : '-';
+    const totalFail = sum(rows.map(r=>r.fail));
+    return `<tr>
+      <td><strong>${city}</strong></td>
+      <td>${rows.length}</td>
+      <td style="font-weight:700;color:${avgS>=90?'#34a853':avgS>=80?'#1a73e8':'#ea4335'}">${avgS}</td>
+      <td>${maxS}</td>
+      <td>${minS}</td>
+      <td>${avgF}</td>
+      <td>${totalFail}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============ 明细表格 ============
+let currentPage = 1;
+const PAGE_SIZE = 15;
+
+function getFiltered() {
+  const city = document.getElementById('filter-city').value;
+  const status = document.getElementById('filter-status').value;
+  const reform = document.getElementById('filter-reform').value;
+  const scoreRange = document.getElementById('filter-score').value;
+  return RAW.filter(r => {
+    if (city && r.city !== city) return false;
+    if (status && r.status !== status) return false;
+    if (reform && r.reform !== reform) return false;
+    if (scoreRange === '90' && r.score < 90) return false;
+    if (scoreRange === '80' && (r.score < 80 || r.score >= 90)) return false;
+    if (scoreRange === '0' && r.score >= 80) return false;
+    return true;
+  });
+}
+
+function renderTable() {
+  currentPage = 1;
+  renderTablePage();
+}
+
+function renderTablePage() {
+  const filtered = getFiltered();
+  const total = filtered.length;
+  document.getElementById('table-count').textContent = `共 ${total} 条`;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const page = filtered.slice(start, start+PAGE_SIZE);
+  const tbody = document.getElementById('detail-tbody');
+  tbody.innerHTML = page.map((r,i) => {
+    const scoreColor = r.score>=90?'#34a853':r.score>=80?'#1a73e8':'#ea4335';
+    const statusBadge = r.status==='已完成'?'badge-green':'badge-orange';
+    const reformBadge = r.reform==='已闭环'?'badge-green':r.reform==='已推送'?'badge-blue':r.reform==='待复核'?'badge-orange':'badge-gray';
+    const reviewBadge = r.review==='已通过'?'badge-green':r.review?'badge-orange':'badge-gray';
+    const barW = Math.round(r.score);
+    const barColor = r.score>=90?'#34a853':r.score>=80?'#1a73e8':'#ea4335';
+    return `<tr>
+      <td>${start+i+1}</td>
+      <td style="max-width:200px;font-size:12px">${r.store}</td>
+      <td>${r.city}</td>
+      <td>${r.date}</td>
+      <td>${r.inspector}</td>
+      <td>
+        <div class="score-bar">
+          <span style="font-weight:700;color:${scoreColor};min-width:28px">${r.score}</span>
+          <div class="bar"><div class="fill" style="width:${barW}%;background:${barColor}"></div></div>
+        </div>
+      </td>
+      <td style="color:#ea4335;font-weight:700">${r.fail}</td>
+      <td><span class="badge ${statusBadge}">${r.status==='pending_confirm'?'待确认':r.status}</span></td>
+      <td><span class="badge ${reformBadge}">${r.reform||'—'}</span></td>
+      <td><span class="badge ${reviewBadge}">${r.review||'—'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // 分页
+  const totalPages = Math.ceil(total/PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.innerHTML=''; return; }
+  let html = `<span>第${currentPage}/${totalPages}页</span>`;
+  if (currentPage>1) html += `<button class="page-btn" onclick="goPage(${currentPage-1})">上一页</button>`;
+  for (let p=Math.max(1,currentPage-2); p<=Math.min(totalPages,currentPage+2); p++) {
+    html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  if (currentPage<totalPages) html += `<button class="page-btn" onclick="goPage(${currentPage+1})">下一页</button>`;
+  pg.innerHTML = html;
+}
+
+function goPage(p) { currentPage=p; renderTablePage(); }
+
+// ============ Tab切换 ============
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+  setTimeout(()=>initCharts(name), 50);
+}
+
+// ============ 图表初始化 ============
+let chartsInited = {};
+
+function initCharts(tab) {
+  if (chartsInited[tab]) return;
+  chartsInited[tab] = true;
+
+  if (tab === 'day') {
+    // 城市得分柱状图
+    const cities = ['青岛','济南','太原','石家庄','济宁','泰安'];
+    const cityScores = cities.map(c => {
+      const rows = RAW.filter(r=>r.city===c);
+      return rows.length ? parseFloat(avg(rows.map(r=>r.score))) : 0;
+    });
+    const cityCounts = cities.map(c => RAW.filter(r=>r.city===c).length);
+    const c1 = echarts.init(document.getElementById('chart-city-score'));
+    c1.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+      legend: { data:['巡检场次','平均得分'], top:0 },
+      xAxis: { type:'category', data:cities, axisLabel:{fontSize:12} },
+      yAxis: [
+        { type:'value', name:'场次', max:20 },
+        { type:'value', name:'得分', min:70, max:100 }
+      ],
+      series: [
+        { name:'巡检场次', type:'bar', data:cityCounts, itemStyle:{color:'#4fc3f7'}, barMaxWidth:40 },
+        { name:'平均得分', type:'line', yAxisIndex:1, data:cityScores, itemStyle:{color:'#1a73e8'}, lineStyle:{width:3}, symbol:'circle', symbolSize:8, label:{show:true,formatter:v=>v.value,fontSize:12,color:'#1a73e8'} }
+      ]
+    });
+
+    // TOP不合格项
+    const issueKeys = Object.keys(ISSUES).slice(0,10);
+    const issueVals = issueKeys.map(k=>ISSUES[k]);
+    const c2 = echarts.init(document.getElementById('chart-issue-top'));
+    c2.setOption({
+      tooltip: { trigger:'axis', axisPointer:{type:'shadow'} },
+      grid: { left:'2%', right:'5%', containLabel:true },
+      xAxis: { type:'value' },
+      yAxis: { type:'category', data:[...issueKeys].reverse(), axisLabel:{fontSize:11} },
+      series: [{
+        type:'bar', data:[...issueVals].reverse(),
+        itemStyle:{ color: (p)=>p.value>=20?'#ea4335':p.value>=10?'#fa7b17':'#fbbc04' },
+        label:{show:true,position:'right',fontSize:12}
+      }]
+    });
+
+    // 得分分布
+    const dist = [0,0,0,0,0]; // <70,70-79,80-89,90-94,95+
+    RAW.forEach(r=>{
+      if(r.score<70) dist[0]++;
+      else if(r.score<80) dist[1]++;
+      else if(r.score<90) dist[2]++;
+      else if(r.score<95) dist[3]++;
+      else dist[4]++;
+    });
+    const c3 = echarts.init(document.getElementById('chart-score-dist'));
+    c3.setOption({
+      tooltip: { trigger:'item', formatter:'{b}: {c}场 ({d}%)' },
+      legend: { bottom:0, textStyle:{fontSize:12} },
+      series:[{
+        type:'pie', radius:['40%','70%'], center:['50%','45%'],
+        data:[
+          {value:dist[0],name:'<70分',itemStyle:{color:'#ea4335'}},
+          {value:dist[1],name:'70-79分',itemStyle:{color:'#fa7b17'}},
+          {value:dist[2],name:'80-89分',itemStyle:{color:'#fbbc04'}},
+          {value:dist[3],name:'90-94分',itemStyle:{color:'#34a853'}},
+          {value:dist[4],name:'≥95分',itemStyle:{color:'#1a73e8'}},
+        ],
+        label:{formatter:'{b}\n{c}场'}
+      }]
+    });
+
+    // 城市不合格项
+    const cityFails = cities.map(c=>{
+      const rows = RAW.filter(r=>r.city===c);
+      return rows.length ? (sum(rows.map(r=>r.fail))/rows.length).toFixed(1) : 0;
+    });
+    const c4 = echarts.init(document.getElementById('chart-city-issue'));
+    c4.setOption({
+      tooltip:{trigger:'axis'},
+      xAxis:{type:'category',data:cities},
+      yAxis:{type:'value',name:'平均不合格项'},
+      series:[{
+        type:'bar', data:cityFails,
+        itemStyle:{color:(p)=>p.value>=6?'#ea4335':p.value>=4?'#fa7b17':'#34a853'},
+        label:{show:true,position:'top',fontSize:13,fontWeight:'bold'},
+        barMaxWidth:50
+      }]
+    });
+  }
+
+  if (tab === 'week') {
+    const weeks = ['W32(8/3-8/9)','W33(8/10-8/16)'];
+    const wScores = weeks.map(w=>{ const r=RAW.filter(x=>getWeek(x.date)===w); return r.length?parseFloat(avg(r.map(x=>x.score))):null; });
+    const wCounts = weeks.map(w=>RAW.filter(x=>getWeek(x.date)===w).length);
+    const wFails = weeks.map(w=>{ const r=RAW.filter(x=>getWeek(x.date)===w); return r.length?(sum(r.map(x=>x.fail))/r.length).toFixed(1):0; });
+
+    const cw1 = echarts.init(document.getElementById('chart-week-score'));
+    cw1.setOption({
+      tooltip:{trigger:'axis'},
+      xAxis:{type:'category',data:weeks,axisLabel:{fontSize:11}},
+      yAxis:{type:'value',min:78,max:92,name:'平均得分'},
+      series:[{type:'line',data:wScores,smooth:true,lineStyle:{width:3,color:'#1a73e8'},symbol:'circle',symbolSize:10,label:{show:true,fontSize:13,color:'#1a73e8'},itemStyle:{color:'#1a73e8'},areaStyle:{color:'rgba(26,115,232,0.1)'}}]
+    });
+
+    const cw2 = echarts.init(document.getElementById('chart-week-count'));
+    cw2.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+      legend:{data:['巡检场次','平均不合格项'],top:0},
+      xAxis:{type:'category',data:weeks,axisLabel:{fontSize:11}},
+      yAxis:[{type:'value',name:'场次'},{type:'value',name:'不合格项',max:8}],
+      series:[
+        {name:'巡检场次',type:'bar',data:wCounts,itemStyle:{color:'#4fc3f7'},barMaxWidth:40},
+        {name:'平均不合格项',type:'line',yAxisIndex:1,data:wFails,lineStyle:{color:'#ea4335',width:2},symbol:'circle',symbolSize:8,itemStyle:{color:'#ea4335'},label:{show:true,fontSize:12,color:'#ea4335'}}
+      ]
+    });
+
+    // 城市周趋势
+    [['青岛','chart-week-qd','#1a73e8'],['济南','chart-week-jn','#34a853'],['太原','chart-week-ty','#fa7b17']].forEach(([city,id,color])=>{
+      const data = weeks.map(w=>{ const r=RAW.filter(x=>getWeek(x.date)===w&&x.city===city); return r.length?parseFloat(avg(r.map(x=>x.score))):null; });
+      const cc = echarts.init(document.getElementById(id));
+      cc.setOption({
+        tooltip:{trigger:'axis'},
+        xAxis:{type:'category',data:weeks,axisLabel:{fontSize:10,rotate:15}},
+        yAxis:{type:'value',min:70,max:100},
+        series:[{type:'line',data,smooth:true,lineStyle:{width:3,color},symbol:'circle',symbolSize:8,label:{show:true,fontSize:12,color},itemStyle:{color},areaStyle:{color:color+'22'}}]
+      });
+    });
+  }
+
+  if (tab === 'analysis') {
+    // 周趋势对比
+    const ca1 = echarts.init(document.getElementById('chart-analysis-month'));
+    ca1.setOption({
+      tooltip:{trigger:'axis'},
+      legend:{data:['平均得分','平均不合格项'],top:0},
+      xAxis:{type:'category',data:['W32(8/3-8/9)','W33(8/10-8/16)']},
+      yAxis:[
+        {type:'value',name:'得分',min:78,max:92},
+        {type:'value',name:'不合格项',min:2,max:8}
+      ],
+      series:[
+        {name:'平均得分',type:'bar',data:[86.6,82.8],itemStyle:{color:(p)=>p.dataIndex===0?'#34a853':'#fa7b17'},barMaxWidth:60,label:{show:true,position:'top',fontSize:14,fontWeight:'bold'}},
+        {name:'平均不合格项',type:'line',yAxisIndex:1,data:[4.1,5.7],lineStyle:{color:'#ea4335',width:3},symbol:'circle',symbolSize:10,itemStyle:{color:'#ea4335'},label:{show:true,fontSize:13,color:'#ea4335'}}
+      ]
+    });
+
+    // 优秀站点横向柱状图（仅8月数据）
+    const topStores = [
+      {name:'南辛庄-JN0010',score:95,city:'济南'},
+      {name:'石栾大街-SJ0012',score:93,city:'石家庄'},
+      {name:'凤凰山-JN0012',score:93,city:'济南'},
+      {name:'唐郡站-JN0014',score:93,city:'济南'},
+      {name:'千忆站-QD0001',score:92,city:'青岛'},
+      {name:'乐享站-QD0011',score:90,city:'青岛'},
+      {name:'中泰站-QD0010',score:90,city:'青岛'},
+      {name:'丽达站-QD0002',score:90,city:'青岛'},
+      {name:'长治路-TY0005',score:90,city:'太原'},
+    ].reverse();
+    const colorMap = {'太原':'#34a853','济南':'#1a73e8','青岛':'#fa7b17','石家庄':'#9c27b0'};
+    const ca2 = echarts.init(document.getElementById('chart-top-stores'));
+    ca2.setOption({
+      tooltip:{trigger:'axis',formatter:p=>`${p[0].name}（${topStores[p[0].dataIndex]?.city||''}）<br/>得分：<b>${p[0].value}</b>`},
+      grid:{left:'2%',right:'8%',containLabel:true},
+      xAxis:{type:'value',min:88,max:100},
+      yAxis:{type:'category',data:topStores.map(s=>s.name),axisLabel:{fontSize:11}},
+      series:[{
+        type:'bar',
+        data:topStores.map(s=>({value:s.score,itemStyle:{color:colorMap[s.city]||'#1a73e8'}})),
+        label:{show:true,position:'right',fontSize:12,fontWeight:'bold'},
+        barMaxWidth:18
+      }]
+    });
+
+    // TOP15不合格项
+    const issueData = [
+      {name:'11.2 专区清洁/工器具卫生',val:32,cat:'A'},
+      {name:'13.3 商品需离地贮存',val:22,cat:'B'},
+      {name:'13.5 不合格品贮存标识',val:21,cat:'B'},
+      {name:'9.1 标签标识合规',val:20,cat:'C'},
+      {name:'13.2 食品与非食分区',val:18,cat:'B'},
+      {name:'13.4 商品不得错温贮存',val:14,cat:'B'},
+      {name:'12.2 灭蝇灯正常开启',val:10,cat:'A'},
+      {name:'14.1 化学品专区隔离',val:10,cat:'E'},
+      {name:'12.3 无动物活体/痕迹',val:9,cat:'A'},
+      {name:'7.1 健康证上岗',val:8,cat:'D'},
+      {name:'13.1 特殊食品专区陈列',val:8,cat:'B'},
+      {name:'8.1 无过期商品',val:3,cat:'C'},
+      {name:'4.1 不涂改生产日期',val:2,cat:'C'},
+      {name:'2.1/2.2 健康证真实有效',val:2,cat:'D'},
+      {name:'6.1 日排查周管控',val:1,cat:'E'},
+    ].reverse();
+    const catColor = {A:'#ea4335',B:'#fa7b17',C:'#fbbc04',D:'#c62828',E:'#1a73e8'};
+    const ca3 = echarts.init(document.getElementById('chart-analysis-issues'));
+    ca3.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>`${p[0].name}<br/>出现频次：<b>${p[0].value}次</b>（占比${(p[0].value/42*100).toFixed(1)}%）`},
+      grid:{left:'2%',right:'10%',containLabel:true},
+      xAxis:{type:'value',name:'频次'},
+      yAxis:{type:'category',data:issueData.map(d=>d.name),axisLabel:{fontSize:11}},
+      series:[{
+        type:'bar',
+        data:issueData.map(d=>({value:d.val,itemStyle:{color:catColor[d.cat]}})),
+        label:{show:true,position:'right',fontSize:12,fontWeight:'bold',formatter:p=>`${p.value}次`},
+        barMaxWidth:16
+      }]
+    });
+
+    // 问题分类饼图
+    const ca4 = echarts.init(document.getElementById('chart-analysis-category'));
+    ca4.setOption({
+      tooltip:{trigger:'item',formatter:'{b}：{c}次 ({d}%)'},
+      legend:{bottom:0,textStyle:{fontSize:11}},
+      series:[{
+        type:'pie',radius:['35%','65%'],center:['50%','42%'],
+        data:[
+          {value:51,name:'A类·环境卫生',itemStyle:{color:'#ea4335'}},
+          {value:83,name:'B类·商品贮存',itemStyle:{color:'#fa7b17'}},
+          {value:22,name:'C类·标签合规',itemStyle:{color:'#fbbc04'}},
+          {value:10,name:'D类·人员证件',itemStyle:{color:'#c62828'}},
+          {value:10,name:'E类·化学品管理',itemStyle:{color:'#1a73e8'}},
+        ],
+        label:{formatter:'{b}\n{c}次',fontSize:11}
+      }]
+    });
+  }
+
+  if (tab === 'month') {
+    const cities = ['青岛','济南','太原','石家庄','济宁','泰安'];
+    const augData = cities.map(c=>{
+      const r=RAW.filter(x=>x.city===c);
+      return r.length?parseFloat(avg(r.map(x=>x.score))):0;
+    });
+
+    const cm1 = echarts.init(document.getElementById('chart-month-city'));
+    cm1.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+      xAxis:{type:'category',data:cities},
+      yAxis:{type:'value',min:70,max:100,name:'平均得分'},
+      series:[
+        {name:'8月',type:'bar',data:augData,itemStyle:{color:'#1a73e8'},barMaxWidth:50,label:{show:true,position:'top',fontSize:12,fontWeight:'bold'}}
+      ]
+    });
+
+    // 月度TOP不合格项
+    const issueKeys = Object.keys(ISSUES);
+    const issueVals = issueKeys.map(k=>ISSUES[k]);
+    const cm2 = echarts.init(document.getElementById('chart-month-issue'));
+    cm2.setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+      grid:{left:'2%',right:'8%',containLabel:true},
+      xAxis:{type:'value'},
+      yAxis:{type:'category',data:[...issueKeys].reverse(),axisLabel:{fontSize:11}},
+      series:[{
+        type:'bar',data:[...issueVals].reverse(),
+        itemStyle:{color:(p)=>p.value>=20?'#ea4335':p.value>=10?'#fa7b17':'#fbbc04'},
+        label:{show:true,position:'right',fontSize:12,fontWeight:'bold'}
+      }]
+    });
+
+    // 每日趋势
+    const dateMap = {};
+    RAW.forEach(r=>{ if(!dateMap[r.date]) dateMap[r.date]=[]; dateMap[r.date].push(r.score); });
+    const dates = Object.keys(dateMap).sort();
+    const dailyAvg = dates.map(d=>parseFloat(avg(dateMap[d])));
+    const cm3 = echarts.init(document.getElementById('chart-daily-trend'));
+    cm3.setOption({
+      tooltip:{trigger:'axis',formatter:p=>`${p[0].axisValue}<br/>平均得分：<b>${p[0].value}</b>`},
+      xAxis:{type:'category',data:dates,axisLabel:{rotate:30,fontSize:11}},
+      yAxis:{type:'value',min:70,max:100,name:'平均得分'},
+      series:[{
+        type:'line',data:dailyAvg,smooth:true,
+        lineStyle:{width:3,color:'#1a73e8'},
+        symbol:'circle',symbolSize:8,
+        itemStyle:{color:'#1a73e8'},
+        areaStyle:{color:'rgba(26,115,232,0.1)'},
+        markLine:{data:[{type:'average',name:'均值',lineStyle:{color:'#ea4335',type:'dashed'}}]}
+      }]
+    });
+  }
+}
+
+// ============ 初始化 ============
+renderCitySummary();
+renderMonthCity();
+renderTable();
+initCharts('day');
+</script>
+</body>
+</html>
