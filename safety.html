@@ -288,11 +288,14 @@ const RAW = [{"date":"2026-08-06","city":"石家庄","zone":"石家庄一区","s
 function getStationMap() {
   const m = {};
   RAW.forEach(r => {
-    const key = r.city + '|' + r.station + '|' + r.fixType;
-    if (!m[key]) m[key] = { city:r.city, zone:r.zone, station:r.station, fixType:r.fixType, score:r.score, status:r.status, issues:[] };
-    if (r.issue !== '全部合格') m[key].issues.push(r.issue);
+    const key = r.city + '|' + r.station;
+    if (!m[key]) m[key] = { city:r.city, zone:r.zone, station:r.station, fixTypes:new Set(), score:r.score, status:r.status, issues:[] };
+    // 同一站点取最低分（更严格）
+    if (r.score < m[key].score) { m[key].score = r.score; m[key].status = r.status; }
+    m[key].fixTypes.add(r.fixType);
+    if (r.issue !== '全部合格' && !m[key].issues.includes(r.issue)) m[key].issues.push(r.issue);
   });
-  return Object.values(m);
+  return Object.values(m).map(s => ({ ...s, fixType: [...s.fixTypes].join('+') }));
 }
 
 function getCityMap() {
