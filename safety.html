@@ -1,0 +1,694 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>华北二大区 · 安全稽查看板</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a1f2e 0%,#16213e 100%);border-bottom:1px solid #2d3748;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header-left h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:1px}
+.header-left .sub{font-size:12px;color:#718096;margin-top:2px}
+.header-right{display:flex;gap:12px;align-items:center}
+.update-badge{background:#1a2744;border:1px solid #2d4a8a;border-radius:6px;padding:4px 12px;font-size:12px;color:#90cdf4}
+.tabs{display:flex;background:#1a1f2e;border-bottom:1px solid #2d3748;padding:0 24px}
+.tab{padding:12px 20px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:#718096;transition:all .2s}
+.tab.active{color:#63b3ed;border-bottom-color:#63b3ed}
+.tab:hover{color:#a0aec0}
+.page{display:none;padding:20px 24px}
+.page.active{display:block}
+
+/* KPI Cards */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.kpi-card{background:#1a1f2e;border:1px solid #2d3748;border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.blue::before{background:linear-gradient(90deg,#3182ce,#63b3ed)}
+.kpi-card.green::before{background:linear-gradient(90deg,#276749,#48bb78)}
+.kpi-card.orange::before{background:linear-gradient(90deg,#c05621,#ed8936)}
+.kpi-card.red::before{background:linear-gradient(90deg,#9b2c2c,#fc8181)}
+.kpi-card.purple::before{background:linear-gradient(90deg,#553c9a,#9f7aea)}
+.kpi-label{font-size:11px;color:#718096;margin-bottom:6px}
+.kpi-value{font-size:28px;font-weight:700;color:#fff}
+.kpi-unit{font-size:13px;color:#a0aec0;margin-left:2px}
+.kpi-sub{font-size:11px;color:#718096;margin-top:4px}
+
+/* Section */
+.section{background:#1a1f2e;border:1px solid #2d3748;border-radius:10px;padding:16px;margin-bottom:16px}
+.section-title{font-size:13px;font-weight:600;color:#a0aec0;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.section-title::before{content:'';width:3px;height:14px;background:#63b3ed;border-radius:2px;display:inline-block}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#0f1117;color:#718096;padding:8px 10px;text-align:left;font-weight:500;border-bottom:1px solid #2d3748}
+td{padding:8px 10px;border-bottom:1px solid #1e2535;color:#cbd5e0}
+tr:hover td{background:#1e2535}
+.score-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:600;font-size:12px}
+.score-a{background:#1c4532;color:#68d391}
+.score-b{background:#1a365d;color:#90cdf4}
+.score-c{background:#7b341e;color:#fbd38d}
+.score-d{background:#742a2a;color:#fc8181}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:11px}
+.tag-fire{background:#2d1515;color:#fc8181}
+.tag-elec{background:#1a2744;color:#90cdf4}
+.tag-doc{background:#1a2d1a;color:#68d391}
+.tag-work{background:#2d2215;color:#fbd38d}
+.tag-ok{background:#1c4532;color:#68d391}
+.status-done{color:#68d391}
+.status-pending{color:#fc8181}
+.status-review{color:#fbd38d}
+
+/* Charts */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.bar-wrap{display:flex;flex-direction:column;gap:6px}
+.bar-item{display:flex;align-items:center;gap:8px;font-size:12px}
+.bar-label{width:140px;color:#a0aec0;text-align:right;flex-shrink:0;font-size:11px}
+.bar-track{flex:1;background:#0f1117;border-radius:3px;height:16px;position:relative}
+.bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:11px;font-weight:600;color:#fff;transition:width .5s}
+.bar-count{width:30px;text-align:right;color:#718096;font-size:11px}
+
+/* City grid */
+.city-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.city-card{background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:12px}
+.city-name{font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:8px}
+.city-stats{display:flex;gap:12px;flex-wrap:wrap}
+.city-stat{font-size:11px;color:#718096}
+.city-stat span{color:#e2e8f0;font-weight:600}
+
+/* Timeline */
+.timeline{display:flex;flex-direction:column;gap:4px}
+.tl-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12px}
+.tl-row:hover{background:#0f1117}
+.tl-date{width:80px;color:#718096;flex-shrink:0}
+.tl-city{width:50px;color:#a0aec0;flex-shrink:0}
+.tl-station{flex:1;color:#cbd5e0}
+.tl-score{width:50px;text-align:right}
+.tl-issue{flex:2;color:#a0aec0;font-size:11px}
+
+/* Week/Month trend */
+.trend-row{display:flex;gap:8px;align-items:flex-end;height:80px;margin-top:8px}
+.trend-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.trend-bar{width:100%;border-radius:3px 3px 0 0;min-height:4px;transition:height .5s}
+.trend-label{font-size:10px;color:#718096;text-align:center}
+.trend-val{font-size:10px;color:#a0aec0}
+
+/* Station list */
+.station-list{display:flex;flex-direction:column;gap:6px}
+.station-item{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#0f1117;border-radius:6px;font-size:12px}
+.station-rank{width:20px;color:#718096;font-weight:600}
+.station-name{flex:1;color:#cbd5e0}
+.station-city{width:50px;color:#718096}
+.station-score{width:50px;text-align:right}
+
+/* Issue freq */
+.issue-freq{display:flex;flex-direction:column;gap:5px}
+.freq-item{display:flex;align-items:center;gap:8px;font-size:12px}
+.freq-name{flex:1;color:#a0aec0}
+.freq-bar{width:120px;background:#0f1117;border-radius:3px;height:12px}
+.freq-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#3182ce,#63b3ed)}
+.freq-count{width:30px;text-align:right;color:#718096}
+.freq-pct{width:36px;text-align:right;color:#4a5568;font-size:11px}
+
+/* Scrollable */
+.scroll-table{max-height:400px;overflow-y:auto}
+.scroll-table::-webkit-scrollbar{width:4px}
+.scroll-table::-webkit-scrollbar-track{background:#0f1117}
+.scroll-table::-webkit-scrollbar-thumb{background:#2d3748;border-radius:2px}
+
+/* Alert */
+.alert-card{background:#2d1515;border:1px solid #742a2a;border-radius:8px;padding:12px;margin-bottom:8px}
+.alert-title{font-size:12px;font-weight:600;color:#fc8181;margin-bottom:4px}
+.alert-body{font-size:11px;color:#feb2b2}
+.good-card{background:#1c4532;border:1px solid #276749;border-radius:8px;padding:12px;margin-bottom:8px}
+.good-title{font-size:12px;font-weight:600;color:#68d391;margin-bottom:4px}
+.good-body{font-size:11px;color:#9ae6b4}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>🛡️ 华北二大区 · 安全稽查看板</h1>
+    <div class="sub">安全检查现场整改 + 限期整改 · 华北二大区</div>
+  </div>
+  <div class="header-right">
+    <div class="update-badge">📅 数据更新：2026-08-20</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">📊 总览</div>
+  <div class="tab" onclick="switchTab('city')">🏙️ 城市分析</div>
+  <div class="tab" onclick="switchTab('station')">🏪 站点排名</div>
+  <div class="tab" onclick="switchTab('issue')">⚠️ 问题分析</div>
+  <div class="tab" onclick="switchTab('trend')">📈 趋势</div>
+  <div class="tab" onclick="switchTab('detail')">📋 明细记录</div>
+</div>
+
+<!-- ===== 总览 ===== -->
+<div id="page-overview" class="page active">
+  <div class="kpi-row" id="kpi-row"></div>
+  <div class="chart-row">
+    <div class="section">
+      <div class="section-title">城市得分对比</div>
+      <div class="bar-wrap" id="city-score-bar"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">问题模块分布</div>
+      <div class="bar-wrap" id="module-bar"></div>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="section">
+      <div class="section-title">🔴 高风险站点（得分 &lt; 90）</div>
+      <div id="risk-stations"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">🏆 优秀站点（得分 ≥ 98）</div>
+      <div id="good-stations"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 城市分析 ===== -->
+<div id="page-city" class="page">
+  <div class="section">
+    <div class="section-title">城市汇总</div>
+    <table>
+      <thead><tr>
+        <th>城市</th><th>稽查场次</th><th>平均得分</th><th>最高分</th><th>最低分</th>
+        <th>问题项数</th><th>待整改站点</th><th>已完成率</th>
+      </tr></thead>
+      <tbody id="city-table"></tbody>
+    </table>
+  </div>
+  <div class="city-grid" id="city-cards"></div>
+</div>
+
+<!-- ===== 站点排名 ===== -->
+<div id="page-station" class="page">
+  <div class="chart-row">
+    <div class="section">
+      <div class="section-title">🏆 优秀站点（≥90分）</div>
+      <div class="station-list" id="station-good"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">⚠️ 待改进站点（&lt;90分）</div>
+      <div class="station-list" id="station-bad"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">全部站点得分明细</div>
+    <div class="scroll-table">
+      <table>
+        <thead><tr><th>#</th><th>城市</th><th>战区</th><th>站点</th><th>稽查类型</th><th>得分</th><th>扣分</th><th>主要问题</th><th>状态</th></tr></thead>
+        <tbody id="station-all-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 问题分析 ===== -->
+<div id="page-issue" class="page">
+  <div class="chart-row">
+    <div class="section">
+      <div class="section-title">TOP问题条款频次</div>
+      <div class="issue-freq" id="issue-freq"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">问题模块占比</div>
+      <div class="bar-wrap" id="module-detail-bar"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">整改状态汇总</div>
+    <table>
+      <thead><tr><th>问题条款</th><th>模块</th><th>出现次数</th><th>涉及站点</th><th>待整改</th><th>已完成</th></tr></thead>
+      <tbody id="issue-detail-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 趋势 ===== -->
+<div id="page-trend" class="page">
+  <div class="chart-row">
+    <div class="section">
+      <div class="section-title">每日稽查场次 & 均分</div>
+      <div id="daily-trend"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">每周汇总</div>
+      <div id="weekly-trend"></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">月度汇总</div>
+    <table>
+      <thead><tr><th>月份</th><th>稽查场次</th><th>平均得分</th><th>问题项总数</th><th>已完成率</th></tr></thead>
+      <tbody id="monthly-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 明细 ===== -->
+<div id="page-detail" class="page">
+  <div class="section">
+    <div class="section-title">全部稽查记录明细</div>
+    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <select id="filter-city" onchange="renderDetail()" style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:12px">
+        <option value="">全部城市</option>
+      </select>
+      <select id="filter-type" onchange="renderDetail()" style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:12px">
+        <option value="">全部类型</option>
+        <option value="现场整改">现场整改</option>
+        <option value="限期整改">限期整改</option>
+      </select>
+      <select id="filter-status" onchange="renderDetail()" style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:4px 8px;border-radius:4px;font-size:12px">
+        <option value="">全部状态</option>
+        <option value="已完成">已完成</option>
+        <option value="待整改">待整改</option>
+        <option value="待审核">待审核</option>
+      </select>
+    </div>
+    <div class="scroll-table">
+      <table>
+        <thead><tr><th>日期</th><th>城市</th><th>战区</th><th>站点</th><th>类型</th><th>得分</th><th>问题条款</th><th>模块</th><th>扣分</th><th>状态</th></tr></thead>
+        <tbody id="detail-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 原始数据 =====
+const RAW = [
+  {id:1,date:"2026-08-06",city:"石家庄",zone:"石家庄一区",station:"北焦双塔站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:2,date:"2026-08-07",city:"石家庄",zone:"石家庄一区",station:"仓丰路站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:3,date:"2026-08-10",city:"石家庄",zone:"石家庄一区",station:"石岗联农站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:96},
+  {id:4,date:"2026-08-11",city:"石家庄",zone:"石家庄一区",station:"天山南大街站",status:"已完成",issue:"配电箱周围可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:true,score:96},
+  {id:5,date:"2026-08-12",city:"石家庄",zone:"石家庄一区",station:"谈固东街站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:6,date:"2026-08-13",city:"石家庄",zone:"石家庄一区",station:"民心站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:7,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"千忆站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:8,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"千忆站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:9,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"千忆站",status:"待整改",issue:"安全台账缺失",module:"安全档案",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:10,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"千忆站",status:"待整改",issue:"攀爬货架",module:"生产安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:11,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"长江站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:12,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"长江站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:13,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"待整改",issue:"安全进出口遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:80},
+  {id:14,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"待整改",issue:"配电箱周围可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:80},
+  {id:15,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:80},
+  {id:16,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:80},
+  {id:17,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"待整改",issue:"风机前方货物",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:80},
+  {id:18,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"东山站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:96},
+  {id:19,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"弱电机房杂物可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:20,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:21,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"灭火器外观异常",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:22,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:23,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"丽达站",status:"待审核",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:24,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"丽达站",status:"待审核",issue:"灭火器外观异常",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:25,date:"2026-08-17",city:"青岛",zone:"青岛一区",station:"尚德站",status:"待整改",issue:"安全台账缺失",module:"安全档案",fixType:"现场整改",deduct:4,closed:false,score:96},
+  {id:26,date:"2026-08-17",city:"青岛",zone:"青岛一区",station:"国顺站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:27,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"海尔站",status:"待整改",issue:"安全进出口遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:88},
+  {id:28,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"海尔站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:88},
+  {id:29,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"海尔站",status:"待整改",issue:"冷库顶货架杂物",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:88},
+  {id:30,date:"2026-08-18",city:"太原",zone:"太原一区",station:"航苑北街站",status:"待整改",issue:"配电箱周围可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:31,date:"2026-08-18",city:"太原",zone:"太原一区",station:"航苑北街站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:92},
+  {id:32,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"嘉定站",status:"待整改",issue:"未张贴警示标语",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:96},
+  {id:33,date:"2026-08-19",city:"太原",zone:"太原一区",station:"长治路站",status:"已完成",issue:"",module:"",fixType:"现场整改",deduct:0,closed:true,score:100},
+  {id:34,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"弱电机房杂物可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:35,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"配电箱周围可燃物",module:"用电安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:36,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"灭火器外观异常",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:37,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"点检卡未月度更新",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:38,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:39,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"待整改",issue:"风机前方货物",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:76},
+  {id:40,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"安全进出口遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:41,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"消防栓/灭火器遮挡",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:42,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"风机前方货物",module:"消防安全",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:43,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"应急预案缺失",module:"安全档案",fixType:"现场整改",deduct:4,closed:false,score:84},
+  {id:44,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"海尔站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:45,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"长江站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:46,date:"2026-08-14",city:"青岛",zone:"青岛一区",station:"千忆站",status:"待整改",issue:"消防箱配件损坏缺失",module:"消防安全",fixType:"限期整改",deduct:5,closed:false,score:95},
+  {id:47,date:"2026-08-17",city:"青岛",zone:"青岛一区",station:"尚德站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:48,date:"2026-08-11",city:"石家庄",zone:"石家庄一区",station:"天山南大街站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:49,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"消防演练记录缺失",module:"安全档案",fixType:"限期整改",deduct:5,closed:false,score:90},
+  {id:50,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"广城站",status:"待整改",issue:"安全培训记录缺失",module:"安全档案",fixType:"限期整改",deduct:5,closed:false,score:90},
+  {id:51,date:"2026-08-19",city:"青岛",zone:"青岛一区",station:"高密站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:52,date:"2026-08-13",city:"石家庄",zone:"石家庄一区",station:"民心站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:53,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"东山站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:54,date:"2026-08-17",city:"青岛",zone:"青岛一区",station:"国顺站",status:"已完成",issue:"消防演练记录缺失",module:"安全档案",fixType:"限期整改",deduct:5,closed:true,score:95},
+  {id:55,date:"2026-08-15",city:"青岛",zone:"青岛一区",station:"中泰站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:56,date:"2026-08-07",city:"石家庄",zone:"石家庄一区",station:"仓丰路站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:57,date:"2026-08-12",city:"石家庄",zone:"石家庄一区",station:"谈固东街站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:58,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"报警器指示灯异常",module:"消防安全",fixType:"限期整改",deduct:5,closed:false,score:90},
+  {id:59,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"乐享站",status:"待整改",issue:"消防演练记录缺失",module:"安全档案",fixType:"限期整改",deduct:5,closed:false,score:90},
+  {id:60,date:"2026-08-18",city:"青岛",zone:"青岛一区",station:"嘉定站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:61,date:"2026-08-18",city:"太原",zone:"太原一区",station:"航苑北街站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:62,date:"2026-08-06",city:"石家庄",zone:"石家庄一区",station:"北焦双塔站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:63,date:"2026-08-19",city:"太原",zone:"太原一区",station:"长治路站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:64,date:"2026-08-10",city:"石家庄",zone:"石家庄一区",station:"石岗联农站",status:"已完成",issue:"",module:"",fixType:"限期整改",deduct:0,closed:true,score:100},
+  {id:65,date:"2026-08-16",city:"青岛",zone:"青岛一区",station:"丽达站",status:"待审核",issue:"",module:"",fixType:"限期整改",deduct:0,closed:false,score:100}
+];
+
+// ===== 计算站点维度数据 =====
+function getStationMap() {
+  const m = {};
+  RAW.forEach(r => {
+    const key = r.city + '|' + r.station;
+    if (!m[key]) m[key] = { city:r.city, zone:r.zone, station:r.station, fixTypes:new Set(), score:r.score, status:r.status, issues:[] };
+    // 同一站点取最低分（更严格）
+    if (r.score < m[key].score) { m[key].score = r.score; m[key].status = r.status; }
+    m[key].fixTypes.add(r.fixType);
+    if (r.issue !== '全部合格' && !m[key].issues.includes(r.issue)) m[key].issues.push(r.issue);
+  });
+  return Object.values(m).map(s => ({ ...s, fixType: [...s.fixTypes].join('+') }));
+}
+
+function getCityMap() {
+  const stations = getStationMap();
+  const m = {};
+  stations.forEach(s => {
+    if (!m[s.city]) m[s.city] = { city:s.city, scores:[], issues:[], pending:0, done:0 };
+    m[s.city].scores.push(s.score);
+    m[s.city].issues.push(...s.issues);
+    if (s.status === '已完成') m[s.city].done++;
+    else m[s.city].pending++;
+  });
+  return m;
+}
+
+function getIssueFreq() {
+  const freq = {};
+  RAW.forEach(r => {
+    if (r.issue === '全部合格') return;
+    if (!freq[r.issue]) freq[r.issue] = { name:r.issue, module:r.module, count:0, stations:new Set(), pending:0, done:0 };
+    freq[r.issue].count++;
+    freq[r.issue].stations.add(r.station);
+    if (r.closed) freq[r.issue].done++; else freq[r.issue].pending++;
+  });
+  return Object.values(freq).sort((a,b)=>b.count-a.count);
+}
+
+function scoreClass(s) {
+  if (s >= 98) return 'score-a';
+  if (s >= 90) return 'score-b';
+  if (s >= 80) return 'score-c';
+  return 'score-d';
+}
+function scoreLabel(s) {
+  if (s >= 98) return '优秀';
+  if (s >= 90) return '良好';
+  if (s >= 80) return '待改进';
+  return '高风险';
+}
+function moduleTag(m) {
+  const map = {'消防安全':'tag-fire','用电安全':'tag-elec','安全档案':'tag-doc','作业安全':'tag-work'};
+  return `<span class="tag ${map[m]||'tag-ok'}">${m}</span>`;
+}
+function statusHtml(s) {
+  if (s==='已完成') return `<span class="status-done">✓ 已完成</span>`;
+  if (s==='待审核') return `<span class="status-review">⏳ 待审核</span>`;
+  return `<span class="status-pending">⚠ 待整改</span>`;
+}
+
+// ===== 渲染总览 =====
+function renderOverview() {
+  const stations = getStationMap();
+  const cityMap = getCityMap();
+  const allScores = stations.map(s=>s.score);
+  const avg = (allScores.reduce((a,b)=>a+b,0)/allScores.length).toFixed(1);
+  const total = stations.length;
+  const pending = stations.filter(s=>s.status!=='已完成').length;
+  const issues = RAW.filter(r=>r.issue!=='全部合格').length;
+  const lowRisk = stations.filter(s=>s.score<90).length;
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi-card blue"><div class="kpi-label">稽查总场次</div><div class="kpi-value">${total}<span class="kpi-unit">场</span></div><div class="kpi-sub">现场+限期整改</div></div>
+    <div class="kpi-card green"><div class="kpi-label">平均得分</div><div class="kpi-value">${avg}<span class="kpi-unit">分</span></div><div class="kpi-sub">满分100分</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">问题项总数</div><div class="kpi-value">${issues}<span class="kpi-unit">项</span></div><div class="kpi-sub">待整改+已完成</div></div>
+    <div class="kpi-card red"><div class="kpi-label">待改进站点</div><div class="kpi-value">${lowRisk}<span class="kpi-unit">个</span></div><div class="kpi-sub">得分 &lt; 90分</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">待整改场次</div><div class="kpi-value">${pending}<span class="kpi-unit">场</span></div><div class="kpi-sub">未完成整改</div></div>
+  `;
+
+  // 城市得分条
+  const cities = Object.values(cityMap).sort((a,b)=>b.scores.reduce((x,y)=>x+y,0)/b.scores.length - a.scores.reduce((x,y)=>x+y,0)/a.scores.length);
+  const maxAvg = 100;
+  document.getElementById('city-score-bar').innerHTML = cities.map(c=>{
+    const cavg = (c.scores.reduce((a,b)=>a+b,0)/c.scores.length).toFixed(1);
+    const pct = (cavg/maxAvg*100).toFixed(0);
+    const color = cavg>=98?'#48bb78':cavg>=90?'#63b3ed':cavg>=80?'#ed8936':'#fc8181';
+    return `<div class="bar-item"><div class="bar-label">${c.city}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${cavg}</div></div><div class="bar-count">${c.scores.length}场</div></div>`;
+  }).join('');
+
+  // 模块分布
+  const modCount = {};
+  RAW.forEach(r=>{ if(r.module!=='-') modCount[r.module]=(modCount[r.module]||0)+1; });
+  const modTotal = Object.values(modCount).reduce((a,b)=>a+b,0)||1;
+  const modColors = {'消防安全':'#fc8181','用电安全':'#63b3ed','安全档案':'#68d391','作业安全':'#fbd38d'};
+  document.getElementById('module-bar').innerHTML = Object.entries(modCount).sort((a,b)=>b[1]-a[1]).map(([mod,cnt])=>{
+    const pct = (cnt/modTotal*100).toFixed(0);
+    return `<div class="bar-item"><div class="bar-label">${mod}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${modColors[mod]||'#a0aec0'}">${cnt}项</div></div><div class="bar-count">${pct}%</div></div>`;
+  }).join('');
+
+  // 高风险站点
+  const riskSt = stations.filter(s=>s.score<90).sort((a,b)=>a.score-b.score);
+  document.getElementById('risk-stations').innerHTML = riskSt.length ? riskSt.map(s=>`
+    <div class="alert-card">
+      <div class="alert-title">🔴 ${s.station} (${s.city}) — ${s.score}分</div>
+      <div class="alert-body">问题：${s.issues.join('、')||'无'} | 状态：${s.status}</div>
+    </div>`).join('') : '<div style="color:#68d391;font-size:12px;padding:8px">暂无高风险站点 🎉</div>';
+
+  // 优秀站点
+  const goodSt = stations.filter(s=>s.score>=98).sort((a,b)=>b.score-a.score);
+  document.getElementById('good-stations').innerHTML = goodSt.length ? goodSt.map(s=>`
+    <div class="good-card">
+      <div class="good-title">🏆 ${s.station} (${s.city}) — ${s.score}分</div>
+      <div class="good-body">类型：${s.fixType} | 状态：${s.status}</div>
+    </div>`).join('') : '<div style="color:#718096;font-size:12px;padding:8px">暂无98分以上站点</div>';
+}
+
+// ===== 渲染城市 =====
+function renderCity() {
+  const cityMap = getCityMap();
+  const rows = Object.values(cityMap).sort((a,b)=>a.city.localeCompare(b.city,'zh'));
+  document.getElementById('city-table').innerHTML = rows.map(c=>{
+    const avg = (c.scores.reduce((a,b)=>a+b,0)/c.scores.length).toFixed(1);
+    const max = Math.max(...c.scores);
+    const min = Math.min(...c.scores);
+    const total2 = c.done+c.pending;
+    const doneRate = total2>0?(c.done/total2*100).toFixed(0)+'%':'0%';
+    return `<tr>
+      <td><b>${c.city}</b></td>
+      <td>${c.scores.length}</td>
+      <td><span class="score-badge ${scoreClass(avg)}">${avg}</span></td>
+      <td>${max}</td><td>${min}</td>
+      <td>${c.issues.length}</td>
+      <td>${c.pending}</td>
+      <td>${doneRate}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('city-cards').innerHTML = rows.map(c=>{
+    const avg = (c.scores.reduce((a,b)=>a+b,0)/c.scores.length).toFixed(1);
+    const topIssues = {};
+    c.issues.forEach(i=>topIssues[i]=(topIssues[i]||0)+1);
+    const top3 = Object.entries(topIssues).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    return `<div class="city-card">
+      <div class="city-name">${c.city} <span class="score-badge ${scoreClass(avg)}" style="font-size:11px">${avg}分</span></div>
+      <div class="city-stats">
+        <div class="city-stat">稽查 <span>${c.scores.length}</span> 场</div>
+        <div class="city-stat">待整改 <span>${c.pending}</span></div>
+        <div class="city-stat">问题 <span>${c.issues.length}</span> 项</div>
+      </div>
+      ${top3.length?`<div style="margin-top:8px;font-size:11px;color:#718096">TOP问题：${top3.map(([k,v])=>`${k}(${v})`).join('、')}</div>`:'<div style="margin-top:8px;font-size:11px;color:#68d391">暂无问题记录</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ===== 渲染站点 =====
+function renderStation() {
+  const stations = getStationMap().sort((a,b)=>b.score-a.score);
+  const good = stations.filter(s=>s.score>=90);
+  const bad = stations.filter(s=>s.score<90);
+
+  document.getElementById('station-good').innerHTML = good.map((s,i)=>`
+    <div class="station-item">
+      <div class="station-rank">${i+1}</div>
+      <div class="station-name">${s.station}</div>
+      <div class="station-city">${s.city}</div>
+      <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
+    </div>`).join('');
+
+  document.getElementById('station-bad').innerHTML = bad.length ? bad.map((s,i)=>`
+    <div class="station-item">
+      <div class="station-rank">${i+1}</div>
+      <div class="station-name">${s.station}</div>
+      <div class="station-city">${s.city}</div>
+      <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
+    </div>`).join('') : '<div style="color:#68d391;font-size:12px;padding:8px">暂无待改进站点 🎉</div>';
+
+  document.getElementById('station-all-table').innerHTML = stations.map((s,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${s.city}</td><td>${s.zone}</td>
+      <td>${s.station}</td>
+      <td><span class="tag ${s.fixType==='现场整改'?'tag-elec':'tag-fire'}">${s.fixType}</span></td>
+      <td><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></td>
+      <td>${100-s.score}</td>
+      <td style="font-size:11px;color:#a0aec0">${s.issues.slice(0,2).join('、')+(s.issues.length>2?'…':'')}</td>
+      <td>${statusHtml(s.status)}</td>
+    </tr>`).join('');
+}
+
+// ===== 渲染问题 =====
+function renderIssue() {
+  const freq = getIssueFreq();
+  const total = freq.reduce((a,b)=>a+b.count,0)||1;
+  const maxCnt = freq[0]?.count||1;
+
+  document.getElementById('issue-freq').innerHTML = freq.slice(0,12).map(f=>`
+    <div class="freq-item">
+      <div class="freq-name">${f.name}</div>
+      <div class="freq-bar"><div class="freq-fill" style="width:${(f.count/maxCnt*100).toFixed(0)}%"></div></div>
+      <div class="freq-count">${f.count}</div>
+      <div class="freq-pct">${(f.count/total*100).toFixed(0)}%</div>
+    </div>`).join('');
+
+  const modCount = {};
+  RAW.forEach(r=>{ if(r.module!=='-') modCount[r.module]=(modCount[r.module]||0)+1; });
+  const modTotal = Object.values(modCount).reduce((a,b)=>a+b,0)||1;
+  const modColors = {'消防安全':'#fc8181','用电安全':'#63b3ed','安全档案':'#68d391','作业安全':'#fbd38d'};
+  document.getElementById('module-detail-bar').innerHTML = Object.entries(modCount).sort((a,b)=>b[1]-a[1]).map(([mod,cnt])=>{
+    const pct = (cnt/modTotal*100).toFixed(0);
+    return `<div class="bar-item"><div class="bar-label">${mod}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${modColors[mod]||'#a0aec0'}">${cnt}项</div></div><div class="bar-count">${pct}%</div></div>`;
+  }).join('');
+
+  document.getElementById('issue-detail-table').innerHTML = freq.map(f=>`
+    <tr>
+      <td>${f.name}</td>
+      <td>${moduleTag(f.module)}</td>
+      <td><b>${f.count}</b></td>
+      <td>${f.stations.size}</td>
+      <td><span class="status-pending">${f.pending}</span></td>
+      <td><span class="status-done">${f.done}</span></td>
+    </tr>`).join('');
+}
+
+// ===== 渲染趋势 =====
+function renderTrend() {
+  const stations = getStationMap();
+  // 每日
+  const daily = {};
+  stations.forEach(s=>{
+    if (!daily[s.date]) daily[s.date] = { scores:[], count:0 };
+    daily[s.date].scores.push(s.score);
+    daily[s.date].count++;
+  });
+  const days = Object.keys(daily).sort();
+  const maxDayScore = 100;
+  document.getElementById('daily-trend').innerHTML = `
+    <div style="overflow-x:auto">
+    <table style="width:100%">
+      <thead><tr><th>日期</th><th>场次</th><th>均分</th><th>最低分</th><th>趋势</th></tr></thead>
+      <tbody>${days.map(d=>{
+        const avg2 = (daily[d].scores.reduce((a,b)=>a+b,0)/daily[d].scores.length).toFixed(1);
+        const min2 = Math.min(...daily[d].scores);
+        const color = avg2>=98?'#48bb78':avg2>=90?'#63b3ed':avg2>=80?'#ed8936':'#fc8181';
+        const w = (avg2/100*80).toFixed(0);
+        return `<tr><td>${d}</td><td>${daily[d].count}</td><td><span class="score-badge ${scoreClass(avg2)}">${avg2}</span></td><td>${min2}</td>
+          <td><div style="background:#0f1117;border-radius:3px;height:12px;width:100px"><div style="width:${w}px;height:100%;background:${color};border-radius:3px"></div></div></td></tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+
+  // 周
+  const weekly = {};
+  stations.forEach(s=>{
+    const d = new Date(s.date);
+    const week = getWeekNum(d);
+    if (!weekly[week]) weekly[week] = { scores:[], count:0, label:'W'+week };
+    weekly[week].scores.push(s.score);
+    weekly[week].count++;
+  });
+  const weeks = Object.keys(weekly).sort();
+  document.getElementById('weekly-trend').innerHTML = `
+    <table style="width:100%">
+      <thead><tr><th>周次</th><th>场次</th><th>均分</th><th>最低分</th></tr></thead>
+      <tbody>${weeks.map(w=>{
+        const wk = weekly[w];
+        const avg2 = (wk.scores.reduce((a,b)=>a+b,0)/wk.scores.length).toFixed(1);
+        const min2 = Math.min(...wk.scores);
+        return `<tr><td>第${w}周</td><td>${wk.count}</td><td><span class="score-badge ${scoreClass(avg2)}">${avg2}</span></td><td>${min2}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  // 月
+  const monthly = {};
+  stations.forEach(s=>{
+    const mon = s.date.substring(0,7);
+    if (!monthly[mon]) monthly[mon] = { scores:[], issues:0, done:0, total:0 };
+    monthly[mon].scores.push(s.score);
+    monthly[mon].total++;
+    if (s.status==='已完成') monthly[mon].done++;
+  });
+  RAW.forEach(r=>{ if(r.issue!=='全部合格'){ const mon=r.date.substring(0,7); if(monthly[mon]) monthly[mon].issues++; }});
+  document.getElementById('monthly-table').innerHTML = Object.keys(monthly).sort().map(mon=>{
+    const m = monthly[mon];
+    const avg2 = (m.scores.reduce((a,b)=>a+b,0)/m.scores.length).toFixed(1);
+    const doneRate = (m.done/m.total*100).toFixed(0)+'%';
+    return `<tr><td>${mon}</td><td>${m.total}</td><td><span class="score-badge ${scoreClass(avg2)}">${avg2}</span></td><td>${m.issues}</td><td>${doneRate}</td></tr>`;
+  }).join('');
+}
+
+function getWeekNum(d) {
+  const start = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+}
+
+// ===== 渲染明细 =====
+function renderDetail() {
+  const cityF = document.getElementById('filter-city').value;
+  const typeF = document.getElementById('filter-type').value;
+  const statusF = document.getElementById('filter-status').value;
+  const data = RAW.filter(r=>
+    (!cityF || r.city===cityF) &&
+    (!typeF || r.fixType===typeF) &&
+    (!statusF || r.status===statusF)
+  );
+  document.getElementById('detail-table').innerHTML = data.map(r=>`
+    <tr>
+      <td>${r.date}</td><td>${r.city}</td><td>${r.zone}</td>
+      <td style="font-size:11px">${r.station}</td>
+      <td><span class="tag ${r.fixType==='现场整改'?'tag-elec':'tag-fire'}">${r.fixType}</span></td>
+      <td><span class="score-badge ${scoreClass(r.score)}">${r.score}</span></td>
+      <td style="font-size:11px;color:${r.issue==='全部合格'?'#68d391':'#a0aec0'}">${r.issue}</td>
+      <td>${r.module!=='-'?moduleTag(r.module):''}</td>
+      <td>${r.deduct>0?`<span style="color:#fc8181">-${r.deduct}</span>`:'—'}</td>
+      <td>${statusHtml(r.status)}</td>
+    </tr>`).join('');
+}
+
+function initFilters() {
+  const cities = [...new Set(RAW.map(r=>r.city))].sort();
+  const sel = document.getElementById('filter-city');
+  cities.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+}
+
+// ===== Tab切换 =====
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+}
+
+// ===== 初始化 =====
+renderOverview();
+renderCity();
+renderStation();
+renderIssue();
+renderTrend();
+initFilters();
+renderDetail();
+</script>
+</body>
+</html>
