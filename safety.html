@@ -533,8 +533,8 @@ function renderStation() {
         <div class="station-name">${s.station}</div>
         <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
         <div class="station-status">${statusHtml(s.status)}</div>
-      </div>`).join(')}
-    </div>`).join(');
+      </div>`).join('')}
+    </div>`).join('');
 
   document.getElementById('station-all-table').innerHTML = stations.map((s,i)=>`
     <tr>
