@@ -123,6 +123,11 @@ tr:hover td{background:#1e2535}
 .good-card{background:#1c4532;border:1px solid #276749;border-radius:8px;padding:12px;margin-bottom:8px}
 .good-title{font-size:12px;font-weight:600;color:#68d391;margin-bottom:4px}
 .good-body{font-size:11px;color:#9ae6b4}
+.station-group{margin-bottom:14px}
+.station-group .group-header{font-size:13px;font-weight:600;color:#e2e8f0;padding:7px 10px;background:rgba(255,255,255,.07);border-left:3px solid #4299e1;border-radius:6px;margin-bottom:8px}
+.station-group .station-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.station-group .station-item .station-name{flex:1;font-size:13px;color:#e2e8f0}
+.station-group .station-item .station-status{font-size:11px}
 </style>
 </head>
 <body>
@@ -188,15 +193,9 @@ tr:hover td{background:#1e2535}
 
 <!-- ===== 站点排名 ===== -->
 <div id="page-station" class="page">
-  <div class="chart-row">
-    <div class="section">
-      <div class="section-title">🏆 优秀站点（≥90分）</div>
-      <div class="station-list" id="station-good"></div>
-    </div>
-    <div class="section">
-      <div class="section-title">⚠️ 待改进站点（&lt;90分）</div>
-      <div class="station-list" id="station-bad"></div>
-    </div>
+  <div class="section">
+    <div class="section-title">🏆 站点成绩（按城市划分，平均分由低到高）</div>
+    <div id="station-city-groups"></div>
   </div>
   <div class="section">
     <div class="section-title">全部站点得分明细</div>
@@ -517,25 +516,25 @@ function renderCity() {
 
 // ===== 渲染站点 =====
 function renderStation() {
-  const stations = getStationMap().sort((a,b)=>b.score-a.score);
-  const good = stations.filter(s=>s.score>=90);
-  const bad = stations.filter(s=>s.score<90);
+  const stations = getStationMap();
+  const cityMap = {};
+  stations.forEach(s=>{ (cityMap[s.city] = cityMap[s.city]||[]).push(s); });
+  const cities = Object.keys(cityMap).map(c=>{
+    const list = cityMap[c].sort((a,b)=>a.score-b.score);
+    return {city:c, list:list, avg:list.reduce((a,b)=>a+b.score,0)/list.length};
+  }).sort((a,b)=>a.avg-b.avg);
 
-  document.getElementById('station-good').innerHTML = good.map((s,i)=>`
-    <div class="station-item">
-      <div class="station-rank">${i+1}</div>
-      <div class="station-name">${s.station}</div>
-      <div class="station-city">${s.city}</div>
-      <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
-    </div>`).join('');
-
-  document.getElementById('station-bad').innerHTML = bad.length ? bad.map((s,i)=>`
-    <div class="station-item">
-      <div class="station-rank">${i+1}</div>
-      <div class="station-name">${s.station}</div>
-      <div class="station-city">${s.city}</div>
-      <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
-    </div>`).join('') : '<div style="color:#68d391;font-size:12px;padding:8px">暂无待改进站点 🎉</div>';
+  document.getElementById('station-city-groups').innerHTML = cities.map(c=>`
+    <div class="station-group">
+      <div class="group-header">🏙️ ${c.city}（${c.list.length}站 · 平均 ${c.avg.toFixed(1)}分 · 待改进 ${c.list.filter(s=>s.score<90).length}站）</div>
+      ${c.list.map((s,i)=>`
+      <div class="station-item">
+        <div class="station-rank">${i+1}</div>
+        <div class="station-name">${s.station}</div>
+        <div class="station-score"><span class="score-badge ${scoreClass(s.score)}">${s.score}</span></div>
+        <div class="station-status">${statusHtml(s.status)}</div>
+      </div>`).join(')}
+    </div>`).join(');
 
   document.getElementById('station-all-table').innerHTML = stations.map((s,i)=>`
     <tr>
