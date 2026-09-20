@@ -128,6 +128,7 @@ tr:hover td{background:#1e2535}
 .station-group .station-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
 .station-group .station-item .station-name{flex:1;font-size:13px;color:#e2e8f0}
 .station-group .station-item .station-status{font-size:11px}
+#page-unchecked .group-chip{font-size:12px;background:#0f1117;border:1px solid #2d3748;border-radius:4px;padding:3px 8px;color:#cbd5e0}
 </style>
 </head>
 <body>
@@ -148,7 +149,8 @@ tr:hover td{background:#1e2535}
   <div class="tab" onclick="switchTab('station')">🏪 站点排名</div>
   <div class="tab" onclick="switchTab('issue')">⚠️ 问题分析</div>
   <div class="tab" onclick="switchTab('trend')">📈 趋势</div>
-  <div class="tab" onclick="switchTab('detail')">📋 明细记录</div>
+    <div class="tab" onclick="switchTab('unchecked')">📍 未检查站点</div>
+<div class="tab" onclick="switchTab('detail')">📋 明细记录</div>
 </div>
 
 <!-- ===== 总览 ===== -->
@@ -247,6 +249,14 @@ tr:hover td{background:#1e2535}
       <thead><tr><th>月份</th><th>稽查场次</th><th>平均得分</th><th>问题项总数</th><th>已完成率</th></tr></thead>
       <tbody id="monthly-table"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ===== 未检查站点 ===== -->
+<div id="page-unchecked" class="page">
+  <div class="section">
+    <div class="section-title">📍 未检查站点明细（按区域划分）</div>
+    <div id="unchecked-groups"></div>
   </div>
 </div>
 
@@ -676,6 +686,37 @@ function renderDetail() {
     </tr>`).join('');
 }
 
+// ===== 全量站点清单（待填：城市/战区/站点名，用于计算未检查站点） =====
+const ALL_STATIONS = [];
+
+// ===== 渲染未检查站点 =====
+function renderUnchecked() {
+  const el = document.getElementById('unchecked-groups');
+  const checkedSet = new Set(RAW.map(r=>r.station));
+  if (!ALL_STATIONS.length) {
+    el.innerHTML = '<div style="color:#fbd38d;font-size:12px;padding:12px">📋 暂无全量站点清单：请提供华北二大区全部站点名单（城市 / 战区 / 站点名，Excel或粘贴均可），提供后即可自动计算并展示未检查站点明细。</div>';
+    return;
+  }
+  const zoneMap = {};
+  ALL_STATIONS.forEach(s=>{
+    if (checkedSet.has(s.station)) return;
+    const key = s.city + ' · ' + s.zone;
+    (zoneMap[key] = zoneMap[key]||[]).push(s);
+  });
+  const zones = Object.keys(zoneMap).sort();
+  const totalUnchecked = zones.reduce((a,k)=>a+zoneMap[k].length,0);
+  const checkedCnt = checkedSet.size;
+  const summary = '<div style="font-size:12px;color:#a0aec0;margin-bottom:12px">覆盖进度：已检查 <b style="color:#68d391">' + checkedCnt + '</b> / ' + ALL_STATIONS.length + ' 站 · 未检查 <b style="color:#fc8181">' + totalUnchecked + '</b> 站</div>';
+  if (!totalUnchecked) {
+    el.innerHTML = summary + '<div style="color:#68d391;font-size:13px;padding:8px">🎉 全部站点均已稽查完成</div>';
+    return;
+  }
+  el.innerHTML = summary + zones.map(k=>{
+    const list = zoneMap[k];
+    const chips = list.map(s=>'<span style="font-size:12px;background:#0f1117;border:1px solid #2d3748;border-radius:4px;padding:3px 8px;color:#cbd5e0">' + s.station + '</span>').join('');
+    return '<div class="station-group"><div class="group-header">📍 ' + k + '（未检查 ' + list.length + ' 站）</div>' + '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px">' + chips + '</div></div>';
+  }).join('');
+}
 function initFilters() {
   const cities = [...new Set(RAW.map(r=>r.city))].sort();
   const sel = document.getElementById('filter-city');
@@ -698,6 +739,7 @@ renderIssue();
 renderTrend();
 initFilters();
 renderDetail();
+renderUnchecked();
 </script>
 </body>
 </html>
