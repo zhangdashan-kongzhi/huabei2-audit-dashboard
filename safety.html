@@ -605,7 +605,7 @@ function renderIssue() {
 
 // ===== 渲染趋势 =====
 function renderTrend() {
-  const stations = getStationMap();
+  const stations = RAW;
   // 每日
   const daily = {};
   stations.forEach(s=>{
@@ -806,6 +806,7 @@ function switchTab(name) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   event.target.classList.add('active');
   document.getElementById('page-'+name).classList.add('active');
+  if (name === 'unchecked') renderUnchecked();
 }
 
 // ===== 初始化 =====
