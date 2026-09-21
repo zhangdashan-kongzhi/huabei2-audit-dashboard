@@ -449,7 +449,7 @@
 <!-- ===== 明细列表 ===== -->
 <div id="tab-unchecked" class="tab-content">
 <div class="container">
-  <div class="section-title">📍 未稽查站点明细（按主城 · 城市 · 分区分组）</div>
+  <div class="section-title">📍 未稽查站点明细（按分区分组）</div>
   <div style="background:#f8f9fa;border-radius:10px;padding:14px 18px;font-size:13px;color:#555;margin-bottom:16px">
     口径说明：基于华北二大区全量站点名单（64站：55上线 + 9筹建），<b>筹建站不计入统计</b>；已稽查站点根据巡检明细（RAW）自动匹配门店名称实时排除，每日数据更新后自动重算。
   </div>
@@ -1015,12 +1015,11 @@ function renderUnchecked() {
   const zoneMap = {};
   liveList.forEach(s=>{
     if (checkedSet.has(s.station)) return;
-    const key = (s.main ? s.main + '主城 · ' : '') + s.city + ' · ' + s.zone;
+    const key = s.zone;
     (zoneMap[key] = zoneMap[key]||[]).push(s);
   });
   const mainOrder = {'青岛':0,'济南':1,'石家庄':2,'太原':3};
-  const mainOf = k => (k.match(/^(.+?)主城/) || [,''])[1];
-  const zones = Object.keys(zoneMap).sort((a,b)=>((mainOrder[mainOf(a)] ?? 9)-(mainOrder[mainOf(b)] ?? 9)) || a.localeCompare(b,'zh'));
+  const zones = Object.keys(zoneMap).sort((a,b)=>((mainOrder[zoneMap[a][0].main] ?? 9)-(mainOrder[zoneMap[b][0].main] ?? 9)) || a.localeCompare(b,'zh'));
   const totalUnchecked = zones.reduce((a,k)=>a+zoneMap[k].length,0);
   const checkedCnt = liveList.filter(s=>checkedSet.has(s.station)).length;
   const summary = '<div style="font-size:13px;color:#555;margin-bottom:14px">覆盖进度：已稽查 <b style="color:#34a853">' + checkedCnt + '</b> / ' + liveList.length + ' 站（上线）· 未稽查 <b style="color:#ea4335">' + totalUnchecked + '</b> 站 · 另有 ' + (ALL_STATIONS.length - liveList.length) + ' 个筹建站未计入</div>';
