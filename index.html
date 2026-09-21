@@ -79,6 +79,7 @@
   <button class="tab-btn" onclick="switchTab('month')">🗓️ 月视图</button>
   <button class="tab-btn" onclick="switchTab('detail')">📋 明细列表</button>
   <button class="tab-btn" onclick="switchTab('analysis')">📊 分析报告</button>
+  <button class="tab-btn" onclick="switchTab('unchecked')">📍 未稽查站点</button>
 </div>
 
 <!-- ===== 日视图 ===== -->
@@ -446,6 +447,16 @@
 </div>
 
 <!-- ===== 明细列表 ===== -->
+<div id="tab-unchecked" class="tab-content">
+<div class="container">
+  <div class="section-title">📍 未稽查站点明细（按主城 · 城市 · 分区分组）</div>
+  <div style="background:#f8f9fa;border-radius:10px;padding:14px 18px;font-size:13px;color:#555;margin-bottom:16px">
+    口径说明：基于华北二大区全量站点名单（64站：55上线 + 9筹建），<b>筹建站不计入统计</b>；已稽查站点根据巡检明细（RAW）自动匹配门店名称实时排除，每日数据更新后自动重算。
+  </div>
+  <div id="unchecked-groups"></div>
+</div>
+</div>
+
 <div id="tab-detail" class="tab-content">
 <div class="container">
   <div class="filter-row">
@@ -633,6 +644,7 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   event.target.classList.add('active');
+  if (name === 'unchecked') renderUnchecked();
   setTimeout(()=>initCharts(name), 50);
 }
 
@@ -922,6 +934,106 @@ renderCitySummary();
 renderMonthCity();
 renderTable();
 initCharts('day');
+
+// ============ 未稽查站点（全量名单实时计算） ============
+const ALL_STATIONS = [
+  {main:"济南",city:"济南",zone:"济南二分区",status:"上线",station:"凤凰山站"},
+  {main:"济南",city:"济南",zone:"济南二分区",status:"上线",station:"智汇园站"},
+  {main:"济南",city:"淄博",zone:"济南二分区",status:"上线",station:"金乔站"},
+  {main:"济南",city:"济宁",zone:"济南二分区",status:"上线",station:"鲁宝站"},
+  {main:"济南",city:"泰安",zone:"济南二分区",status:"上线",station:"云茂站"},
+  {main:"济南",city:"聊城",zone:"济南二分区",status:"上线",station:"顺屹站"},
+  {main:"济南",city:"济南",zone:"济南二分区",status:"筹建",station:"腊山站"},
+  {main:"济南",city:"济南",zone:"济南二分区",status:"上线",station:"鲁华站"},
+  {main:"济南",city:"济南",zone:"济南二分区",status:"上线",station:"香榭丽站"},
+  {main:"济南",city:"泰安",zone:"济南二分区",status:"筹建",station:"泰山站"},
+  {main:"济南",city:"济宁",zone:"济南二分区",status:"筹建",station:"济安站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"凤岐站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"历城站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"唐郡站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"天辰站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"西河站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"西周站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"上线",station:"南辛庄站"},
+  {main:"济南",city:"济南",zone:"济南一分区",status:"筹建",station:"章丘站"},
+  {main:"青岛",city:"烟台",zone:"青岛三区",status:"上线",station:"科信站"},
+  {main:"青岛",city:"潍坊",zone:"青岛三区",status:"上线",station:"庄樱站"},
+  {main:"青岛",city:"青岛",zone:"青岛三区",status:"上线",station:"广城站"},
+  {main:"青岛",city:"青岛",zone:"青岛三区",status:"筹建",station:"阅武站"},
+  {main:"青岛",city:"青岛",zone:"青岛三区",status:"筹建",station:"开拓站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"丽达站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"银丰站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"筹建",station:"敦化站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"北仲站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"乐享站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"中泰站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"高密站"},
+  {main:"青岛",city:"青岛",zone:"青岛一分区",status:"上线",station:"嘉定站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"国顺站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"尚德站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"武夷站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"长江站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"东山站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"海尔站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"千忆站"},
+  {main:"青岛",city:"青岛",zone:"青岛二分区",status:"上线",station:"景安站"},
+  {main:"石家庄",city:"邯郸",zone:"石家庄二区",status:"上线",station:"东柳西街站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄二区",status:"筹建",station:"金沙江站"},
+  {main:"石家庄",city:"邯郸",zone:"石家庄二区",status:"筹建",station:"渚河路站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄二区",status:"上线",station:"汇宁街站"},
+  {main:"石家庄",city:"保定",zone:"石家庄二区",status:"上线",station:"创业路站"},
+  {main:"石家庄",city:"保定",zone:"石家庄二区",status:"上线",station:"乐凯南大街站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"北焦双塔站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"仓丰路站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"石岗联农站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"石栾大街站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"谈固东街站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"电厂街站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"民心站"},
+  {main:"石家庄",city:"石家庄",zone:"石家庄一分区",status:"上线",station:"天山南大街站"},
+  {main:"太原",city:"太原",zone:"太原一区",status:"上线",station:"航苑北街站"},
+  {main:"太原",city:"太原",zone:"太原一区",status:"上线",station:"康宁街站"},
+  {main:"太原",city:"太原",zone:"太原一区",status:"上线",station:"小井峪路站"},
+  {main:"太原",city:"太原",zone:"太原一区",status:"上线",station:"长治路站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"东太堡站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"和平北路站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"开化寺街站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"胜利街站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"西峪街站"},
+  {main:"太原",city:"太原",zone:"太原二区",status:"上线",station:"紫正路站"}
+];
+
+function renderUnchecked() {
+  const el = document.getElementById('unchecked-groups');
+  const norm = n => String(n || '').replace('小象超市-','').replace(/-[A-Za-z]+\d+$/,'');
+  const checkedSet = new Set(RAW.map(r=>norm(r.station)));
+  if (!ALL_STATIONS.length) {
+    el.innerHTML = '<div style="color:#ea4335;font-size:13px;padding:12px">暂无全量站点清单</div>';
+    return;
+  }
+  const liveList = ALL_STATIONS.filter(s=>s.status!=='筹建');
+  const zoneMap = {};
+  liveList.forEach(s=>{
+    if (checkedSet.has(s.station)) return;
+    const key = (s.main ? s.main + '主城 · ' : '') + s.city + ' · ' + s.zone;
+    (zoneMap[key] = zoneMap[key]||[]).push(s);
+  });
+  const mainOrder = {'青岛':0,'济南':1,'石家庄':2,'太原':3};
+  const mainOf = k => (k.match(/^(.+?)主城/) || [,''])[1];
+  const zones = Object.keys(zoneMap).sort((a,b)=>((mainOrder[mainOf(a)] ?? 9)-(mainOrder[mainOf(b)] ?? 9)) || a.localeCompare(b,'zh'));
+  const totalUnchecked = zones.reduce((a,k)=>a+zoneMap[k].length,0);
+  const checkedCnt = liveList.filter(s=>checkedSet.has(s.station)).length;
+  const summary = '<div style="font-size:13px;color:#555;margin-bottom:14px">覆盖进度：已稽查 <b style="color:#34a853">' + checkedCnt + '</b> / ' + liveList.length + ' 站（上线）· 未稽查 <b style="color:#ea4335">' + totalUnchecked + '</b> 站 · 另有 ' + (ALL_STATIONS.length - liveList.length) + ' 个筹建站未计入</div>';
+  if (!totalUnchecked) {
+    el.innerHTML = summary + '<div style="color:#34a853;font-size:14px;padding:8px">🎉 全部上线站点均已稽查完成</div>';
+    return;
+  }
+  el.innerHTML = summary + zones.map(k=>{
+    const list = zoneMap[k];
+    const chips = list.map(s=>'<span style="font-size:12px;background:#fff;border:1px solid #dadce0;border-radius:4px;padding:3px 10px;color:#444">' + s.station + '</span>').join('');
+    return '<div style="background:#fff;border:1px solid #e8eaed;border-radius:10px;margin-bottom:10px;overflow:hidden"><div style="background:#f1f3f4;padding:8px 14px;font-weight:700;font-size:13px;color:#333">📍 ' + k + '（未稽查 ' + list.length + ' 站）</div><div style="display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px">' + chips + '</div></div>';
+  }).join('');
+}
 </script>
 </body>
 </html>
